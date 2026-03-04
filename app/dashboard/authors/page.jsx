@@ -36,12 +36,15 @@ export default function AuthorsPage() {
     }
 
     try {
-      const { error } = await supabase
-        .from('authors')
-        .delete()
-        .eq('id', authorId)
+      // Use API proxy instead of direct Supabase client
+      const response = await fetch('/api/authors', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: authorId }),
+      })
 
-      if (error) throw error
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Failed to delete author')
 
       alert('Author deleted successfully!')
       loadAuthors()

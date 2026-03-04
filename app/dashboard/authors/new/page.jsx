@@ -81,11 +81,15 @@ export default function NewAuthorPage() {
                 social_links: socialLinks,
             }
 
-            const { error } = await supabase
-                .from('authors')
-                .insert([authorData])
+            // Use API proxy instead of direct Supabase client
+            const response = await fetch('/api/authors', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(authorData),
+            })
 
-            if (error) throw error
+            const result = await response.json()
+            if (!response.ok) throw new Error(result.error || 'Failed to create author')
 
             alert('Author created successfully!')
             router.push('/dashboard/authors')

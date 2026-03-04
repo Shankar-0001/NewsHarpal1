@@ -105,6 +105,7 @@ export default function EditAuthorPage() {
 
         try {
             const authorData = {
+                id: params.id,
                 name,
                 slug,
                 email: email || null,
@@ -114,12 +115,15 @@ export default function EditAuthorPage() {
                 social_links: socialLinks,
             }
 
-            const { error } = await supabase
-                .from('authors')
-                .update(authorData)
-                .eq('id', params.id)
+            // Use API proxy instead of direct Supabase client
+            const response = await fetch('/api/authors', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(authorData),
+            })
 
-            if (error) throw error
+            const result = await response.json()
+            if (!response.ok) throw new Error(result.error || 'Failed to update author')
 
             alert('Author updated successfully!')
             router.push('/dashboard/authors')
