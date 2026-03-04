@@ -6,9 +6,22 @@ export async function POST(request) {
         const authorData = await request.json()
         const supabase = await createClient()
 
+        // Get the current user to attach user_id
+        const { data: { user } } = await supabase.auth.getUser()
+
+        if (!user) {
+            return NextResponse.json({ error: 'Unauthorized: Must be logged in' }, { status: 401 })
+        }
+
+        // Add user_id to the author data
+        const dataWithUser = {
+            ...authorData,
+            user_id: user.id
+        }
+
         const { data, error } = await supabase
             .from('authors')
-            .insert([authorData])
+            .insert([dataWithUser])
             .select()
             .single()
 
