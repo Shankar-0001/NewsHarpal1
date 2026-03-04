@@ -97,7 +97,7 @@ export default function PublicHeader({ categories }) {
           {categories?.map(category => (
             <Link
               key={category.id}
-              href={`/category/${category.slug}`}
+              href={`/${category.slug}`}
               className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
             >
               {category.name}

@@ -135,7 +135,7 @@ export default async function ArticlePage({ params }) {
 
   const articleUrl = `${siteUrl}/${article.categories?.slug || 'news'}/${article.slug}`
   const breadcrumbItems = [
-    { label: article.categories?.name || 'News', href: `/category/${article.categories?.slug || 'news'}` },
+    { label: article.categories?.name || 'News', href: `/${article.categories?.slug || 'news'}` },
     { label: article.title, href: `/${article.categories?.slug || 'news'}/${article.slug}` },
   ]
 
@@ -165,7 +165,7 @@ export default async function ArticlePage({ params }) {
           <Card className="p-8 md:p-12 dark:bg-gray-800 dark:border-gray-700">
             {/* Category Badge */}
             {article.categories && (
-              <Link href={`/category/${article.categories.slug}`}>
+              <Link href={`/${article.categories.slug}`}>
                 <Badge variant="secondary" className="mb-4 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                   {article.categories.name}
                 </Badge>
