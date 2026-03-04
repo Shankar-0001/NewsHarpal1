@@ -208,34 +208,28 @@ export default function EditArticlePage() {
                 published_at: finalStatus === 'published' ? new Date().toISOString() : null,
             }
 
-            const { data: updatedArticle, error } = await supabase
-                .from('articles')
-                .update(articleData)
-                .eq('id', params.id)
-                .select()
-                .single()
+            // update via API proxy
+        const response = await fetch(`/api/articles/${params.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(articleData),
+        })
+        const result = await response.json()
+        if (!response.ok) throw new Error(result.error || 'Failed to update')
 
-            if (error) throw error
+        // handle tags through API
+        if (selectedTags.length > 0) {
+          await fetch('/api/article_tags', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(
+              selectedTags.map(tagId => ({ article_id: params.id, tag_id: tagId }))
+            ),
+          })
+        }
 
-            // Handle tags
-            if (selectedTags.length > 0) {
-                // Delete existing tags
-                await supabase
-                    .from('article_tags')
-                    .delete()
-                    .eq('article_id', params.id)
-
-                // Insert new tags
-                const tagRelations = selectedTags.map(tagId => ({
-                    article_id: params.id,
-                    tag_id: tagId,
-                }))
-
-                await supabase.from('article_tags').insert(tagRelations)
-            }
-
-            alert(`Article updated successfully!`)
-            router.push('/dashboard/articles')
+        alert(`Article updated successfully!`)
+        router.push('/dashboard/articles')
         } catch (error) {
             console.error('Error saving article:', error)
             alert('Failed to save article: ' + error.message)
@@ -251,12 +245,9 @@ export default function EditArticlePage() {
 
         setSaving(true)
         try {
-            const { error } = await supabase
-                .from('articles')
-                .delete()
-                .eq('id', params.id)
-
-            if (error) throw error
+            const resp = await fetch(`/api/articles/${params.id}`, { method: 'DELETE' })
+            const json = await resp.json()
+            if (!resp.ok) throw new Error(json.error || 'Failed to delete')
 
             alert('Article deleted successfully!')
             router.push('/dashboard/articles')

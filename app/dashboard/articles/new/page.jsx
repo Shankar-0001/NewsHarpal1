@@ -183,22 +183,27 @@ export default function ArticleEditorPage({ params }) {
         published_at: newStatus === 'published' ? new Date().toISOString() : null,
       }
 
-      const { data: article, error } = await supabase
-        .from('articles')
-        .insert(articleData)
-        .select()
-        .single()
+      // call server API to create article
+      const response = await fetch('/api/articles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(articleData),
+      })
+      const result = await response.json()
+      if (!response.ok) throw new Error(result.error || 'Failed to create')
+      const article = result.article
 
-      if (error) throw error
-
-      // Handle tags
+      // handle tags via API as well (direct supabase call since server has access)
       if (selectedTags.length > 0 && article) {
         const tagRelations = selectedTags.map(tagId => ({
           article_id: article.id,
           tag_id: tagId,
         }))
-
-        await supabase.from('article_tags').insert(tagRelations)
+        await fetch('/api/article_tags', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(tagRelations),
+        })
       }
 
       alert(`Article ${newStatus === 'draft' ? 'saved as draft' : newStatus === 'pending' ? 'submitted for review' : 'published successfully'}!`)
