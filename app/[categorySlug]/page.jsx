@@ -58,13 +58,13 @@ export default async function CategoryPage({ params }) {
         </h1>
 
         {articles && articles.length > 0 ? (
-          <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {articles.map((article) => (
               <Link
                 key={article.id}
                 href={`/${article.categories?.slug}/${article.slug}`}
               >
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer dark:bg-gray-800 dark:border-gray-700">
+                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full dark:bg-gray-800 dark:border-gray-700">
                   <div className="flex flex-col md:flex-row">
                     {article.featured_image_url && (
                       <div className="relative w-full md:w-64 h-48 md:h-auto">
