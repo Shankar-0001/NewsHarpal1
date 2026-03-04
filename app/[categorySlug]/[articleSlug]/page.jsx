@@ -11,9 +11,11 @@ import PublicHeader from '@/components/layout/PublicHeader'
 import Breadcrumb from '@/components/common/Breadcrumb'
 import StructuredData, { NewsArticleSchema } from '@/components/seo/StructuredData'
 import { InArticleAd, MobileStickyAd } from '@/components/ads/AdComponent'
+import { generateArticleSchema } from '@/lib/seo-utils'
+import Script from 'next/script'
 
-// ISR Configuration - Revalidate every 60 seconds
-export const revalidate = 60
+// ISR Configuration - Revalidate every 30 minutes
+export const revalidate = 1800
 
 // Generate static params for published articles
 export async function generateStaticParams() {
@@ -45,7 +47,7 @@ export async function generateMetadata({ params }) {
     .from('articles')
     .select(`
       *,
-      authors (name),
+      authors (name, slug),
       categories (name, slug)
     `)
     .eq('slug', articleSlug)
@@ -58,19 +60,21 @@ export async function generateMetadata({ params }) {
     }
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://publish-pro-20.preview.emergentagent.com'
+  const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://newsharpal.com'
   const articleUrl = `${siteUrl}/${article.categories?.slug || 'news'}/${article.slug}`
 
   return {
     title: article.seo_title || article.title,
     description: article.seo_description || article.excerpt,
+    keywords: article.article_tags?.map(t => t.tags?.name).filter(Boolean).join(', '),
+    authors: article.authors ? [{ name: article.authors.name, url: `${siteUrl}/author/${article.authors.slug}` }] : [],
     openGraph: {
       title: article.seo_title || article.title,
       description: article.seo_description || article.excerpt,
       type: 'article',
       publishedTime: article.published_at,
       modifiedTime: article.updated_at,
-      authors: [article.authors?.name],
+      authors: article.authors?.name ? [article.authors.name] : [],
       images: article.featured_image_url ? [{
         url: article.featured_image_url,
         width: 1200,
@@ -92,6 +96,8 @@ export async function generateMetadata({ params }) {
       index: true,
       follow: true,
       'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
     },
   }
 }
