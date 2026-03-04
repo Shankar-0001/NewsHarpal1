@@ -209,27 +209,27 @@ export default function EditArticlePage() {
             }
 
             // update via API proxy
-        const response = await fetch(`/api/articles/${params.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(articleData),
-        })
-        const result = await response.json()
-        if (!response.ok) throw new Error(result.error || 'Failed to update')
+            const response = await fetch(`/api/articles/${params.id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(articleData),
+            })
+            const result = await response.json()
+            if (!response.ok) throw new Error(result.error || 'Failed to update')
 
-        // handle tags through API
-        if (selectedTags.length > 0) {
-          await fetch('/api/article_tags', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(
-              selectedTags.map(tagId => ({ article_id: params.id, tag_id: tagId }))
-            ),
-          })
-        }
+            // handle tags through API
+            if (selectedTags.length > 0) {
+                await fetch('/api/article_tags', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(
+                        selectedTags.map(tagId => ({ article_id: params.id, tag_id: tagId }))
+                    ),
+                })
+            }
 
-        alert(`Article updated successfully!`)
-        router.push('/dashboard/articles')
+            alert(`Article updated successfully!`)
+            router.push('/dashboard/articles')
         } catch (error) {
             console.error('Error saving article:', error)
             alert('Failed to save article: ' + error.message)
