@@ -7,7 +7,7 @@ import { formatDistanceToNow } from 'date-fns'
 import PublicHeader from '@/components/layout/PublicHeader'
 import Image from 'next/image'
 
-export const dynamicParams = true // allow on-demand generation of category pages
+export const dynamicParams = true // allow on-demand generation for unknown categories
 
 export async function generateStaticParams() {
     try {
@@ -15,8 +15,8 @@ export async function generateStaticParams() {
         const { data: categories } = await supabase.from('categories').select('slug')
         return categories?.map(c => ({ categorySlug: c.slug })) || []
     } catch (error) {
-        console.error('Error generating static params for categories:', error)
-        return [] // return empty array if Supabase fails, pages will be generated on-demand
+        console.error('Error generating static params:', error)
+        return [] // if fetch fails during build, pages generate on-demand
     }
 }
 
@@ -25,14 +25,25 @@ export default async function CategoryPage({ params }) {
     const supabase = await createClient()
 
     // fetch category info (name)
-    const { data: categories } = await supabase
+    const { data: categories, error: catError } = await supabase
         .from('categories')
         .select('name, slug')
         .eq('slug', categorySlug)
         .single()
 
+    if (catError || !categories) {
+        return (
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+                <div className="container mx-auto py-12 text-center">
+                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Category not found</h1>
+                    <p className="text-gray-600 dark:text-gray-400">The category you are looking for does not exist.</p>
+                </div>
+            </div>
+        )
+    }
+
     // fetch articles in this category
-    const { data: articles } = await supabase
+    const { data: articles, error: artError } = await supabase
         .from('articles')
         .select(`
       *,
@@ -48,10 +59,6 @@ export default async function CategoryPage({ params }) {
         .from('categories')
         .select('*')
         .limit(6)
-
-    if (!categories) {
-        return <div className="container mx-auto py-12">Category not found.</div>
-    }
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
