@@ -1,10 +1,27 @@
 import { createClient } from '@/lib/supabase/server'
+import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { FileText, FolderOpen, Tag, Users } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { FileText, FolderOpen, Tag, Users, ArrowRight, Plus } from 'lucide-react'
+import { formatDistanceToNow } from 'date-fns'
+
+export const revalidate = 0
+
+export const metadata = {
+  title: 'Dashboard - NewsHarpal',
+}
 
 export default async function DashboardPage() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
+
+  // Get user role
+  const { data: userData } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
 
   // Get counts
   const { count: articlesCount } = await supabase
@@ -23,60 +40,181 @@ export default async function DashboardPage() {
     .from('authors')
     .select('*', { count: 'exact', head: true })
 
+  // Get recent articles
+  const { data: recentArticles } = await supabase
+    .from('articles')
+    .select('id, title, status, created_at, authors(name)')
+    .order('created_at', { ascending: false })
+    .limit(5)
+
   const stats = [
     {
       title: 'Total Articles',
       value: articlesCount || 0,
       icon: FileText,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
+      color: 'text-blue-600 dark:text-blue-400',
+      bgColor: 'bg-blue-50 dark:bg-blue-950',
+      href: '/dashboard/articles',
     },
     {
       title: 'Categories',
       value: categoriesCount || 0,
       icon: FolderOpen,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
+      color: 'text-green-600 dark:text-green-400',
+      bgColor: 'bg-green-50 dark:bg-green-950',
+      href: '/dashboard/categories',
     },
     {
       title: 'Tags',
       value: tagsCount || 0,
       icon: Tag,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
+      color: 'text-purple-600 dark:text-purple-400',
+      bgColor: 'bg-purple-50 dark:bg-purple-950',
+      href: '/dashboard/tags',
     },
-    {
+    ...(userData?.role === 'admin' ? [{
       title: 'Authors',
       value: authorsCount || 0,
       icon: Users,
-      color: 'text-orange-600',
-      bgColor: 'bg-orange-50',
-    },
+      color: 'text-orange-600 dark:text-orange-400',
+      bgColor: 'bg-orange-50 dark:bg-orange-950',
+      href: '/dashboard/authors',
+    }] : [])
   ]
 
+  const getStatusColor = (status) => {
+    switch (status) {
+      case 'published':
+        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+      case 'draft':
+        return 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200'
+      case 'archived':
+        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
+      default:
+        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+    }
+  }
+
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600 mt-2">Welcome back! Here's an overview of your content.</p>
+    <div className="space-y-8">
+      {/* Welcome Section */}
+      <div>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome back!</h1>
+        <p className="text-gray-600 dark:text-gray-400 mt-2">
+          Here's an overview of your content management dashboard
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      {/* Stats Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map((stat) => (
-          <Card key={stat.title}>
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
-                {stat.title}
-              </CardTitle>
-              <div className={`p-2 rounded-lg ${stat.bgColor}`}>
-                <stat.icon className={`h-5 w-5 ${stat.color}`} />
-              </div>
+          <Link key={stat.title} href={stat.href}>
+            <Card className="cursor-pointer hover:shadow-md transition-shadow h-full">
+              <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+                <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                  {stat.title}
+                </CardTitle>
+                <div className={`p-2 rounded-lg ${stat.bgColor}`}>
+                  <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="text-3xl font-bold text-gray-900 dark:text-white">
+                  {stat.value}
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent Articles */}
+        <div className="lg:col-span-2">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle>Recent Articles</CardTitle>
+              <Link href="/dashboard/articles">
+                <Button variant="ghost" size="sm">
+                  View All
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold">{stat.value}</div>
+              {recentArticles && recentArticles.length > 0 ? (
+                <div className="space-y-4">
+                  {recentArticles.map((article) => (
+                    <Link
+                      key={article.id}
+                      href={`/dashboard/articles/${article.id}/edit`}
+                      className="flex items-start justify-between p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 dark:text-white truncate group-hover:text-blue-600">
+                          {article.title}
+                        </p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {article.authors?.name} • {formatDistanceToNow(new Date(article.created_at), { addSuffix: true })}
+                        </p>
+                      </div>
+                      <Badge className={`ml-2 ${getStatusColor(article.status)} capitalize text-xs`}>
+                        {article.status}
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-sm text-gray-500 dark:text-gray-400">No articles yet</p>
+                </div>
+              )}
             </CardContent>
           </Card>
-        ))}
+        </div>
+
+        {/* Quick Actions */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Link href="/dashboard/articles/new" className="block">
+              <Button className="w-full justify-start">
+                <Plus className="mr-2 h-4 w-4" />
+                New Article
+              </Button>
+            </Link>
+            <Link href="/dashboard/articles" className="block">
+              <Button variant="outline" className="w-full justify-start">
+                <FileText className="mr-2 h-4 w-4" />
+                All Articles
+              </Button>
+            </Link>
+            <Link href="/dashboard/media" className="block">
+              <Button variant="outline" className="w-full justify-start">
+                <Tag className="mr-2 h-4 w-4" />
+                Media Library
+              </Button>
+            </Link>
+            {userData?.role === 'admin' && (
+              <>
+                <Link href="/dashboard/categories" className="block">
+                  <Button variant="outline" className="w-full justify-start">
+                    <FolderOpen className="mr-2 h-4 w-4" />
+                    Categories
+                  </Button>
+                </Link>
+                <Link href="/dashboard/authors" className="block">
+                  <Button variant="outline" className="w-full justify-start">
+                    <Users className="mr-2 h-4 w-4" />
+                    Authors
+                  </Button>
+                </Link>
+              </>
+            )}
+          </CardContent>
+        </Card>
       </div>
     </div>
   )
