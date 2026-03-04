@@ -48,13 +48,17 @@ export default function EditAuthorPage() {
 
             if (data) {
                 setAuthor(data)
-                setName(data.name)
-                setSlug(data.slug)
+                setName(data.name || '')
+                setSlug(data.slug || '')
                 setEmail(data.email || '')
                 setBio(data.bio || '')
                 setTitle(data.title || '')
                 setAvatarUrl(data.avatar_url || '')
-                setSocialLinks(data.social_links || { twitter: '', linkedin: '', website: '' })
+                setSocialLinks({
+                    twitter: data.social_links?.twitter || '',
+                    linkedin: data.social_links?.linkedin || '',
+                    website: data.social_links?.website || '',
+                })
             }
         } catch (error) {
             console.error('Error loading author:', error)
@@ -123,7 +127,9 @@ export default function EditAuthorPage() {
             })
 
             const result = await response.json()
-            if (!response.ok) throw new Error(result.error || 'Failed to update author')
+            if (!response.ok) {
+                throw new Error(result.error || 'Failed to update author')
+            }
 
             alert('Author updated successfully!')
             router.push('/dashboard/authors')

@@ -63,7 +63,7 @@ export default async function HomePage() {
   const { data: categories } = await supabase
     .from('categories')
     .select('*')
-    .limit(6)
+    .order('name') // show all categories alphabetically
 
   const featuredArticle = articles?.[0]
 

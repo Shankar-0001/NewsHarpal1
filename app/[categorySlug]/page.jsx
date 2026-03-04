@@ -1,11 +1,12 @@
 import { createClient } from '@/lib/supabase/server'
+import { notFound } from 'next/navigation'
 import PublicHeader from '@/components/layout/PublicHeader'
 import ArticleCard from './ArticleCard'
 
-// Revalidate category pages every 5 minutes (ISR)
-export const revalidate = 300
+// ISR: refresh category pages every minute
+export const revalidate = 60
 
-export const dynamicParams = true // allow on-demand generation for unknown categories
+export const dynamicParams = true // allow on‑demand generation when new categories are added
 
 export async function generateStaticParams() {
     try {
@@ -14,7 +15,28 @@ export async function generateStaticParams() {
         return categories?.map(c => ({ categorySlug: c.slug })) || []
     } catch (error) {
         console.error('Error generating static params:', error)
-        return [] // if fetch fails during build, pages generate on-demand
+        return []
+    }
+}
+
+export async function generateMetadata({ params }) {
+    const supabase = await createClient()
+    const { data: category } = await supabase
+        .from('categories')
+        .select('name, slug')
+        .eq('slug', params.categorySlug)
+        .single()
+
+    if (!category) return { title: 'Category not found' }
+
+    return {
+        title: `${category.name} – NewsHarpal`,
+        description: `Latest articles in the ${category.name} category.`,
+        openGraph: {
+            title: `${category.name} – NewsHarpal`,
+            description: `Latest articles in the ${category.name} category.`,
+            type: 'website',
+        },
     }
 }
 
@@ -22,48 +44,46 @@ export default async function CategoryPage({ params }) {
     const { categorySlug } = params
     const supabase = await createClient()
 
-    // fetch category info (name)
-    const { data: categories, error: catError } = await supabase
+    // 1. fetch category record by slug
+    const { data: category, error: catError } = await supabase
         .from('categories')
-        .select('name, slug')
+        .select('id, name, slug')
         .eq('slug', categorySlug)
         .single()
 
-    if (catError || !categories) {
-        return (
-            <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-                <div className="container mx-auto py-12 text-center">
-                    <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">Category not found</h1>
-                    <p className="text-gray-600 dark:text-gray-400">The category you are looking for does not exist.</p>
-                </div>
-            </div>
-        )
+    if (catError || !category) {
+        notFound()
     }
 
-    // fetch articles in this category
+    // 2. query articles belonging to that category only
     const { data: articles, error: artError } = await supabase
         .from('articles')
         .select(`
       *,
-      authors (name),
+      authors (name, slug),
       categories (name, slug)
     `)
         .eq('status', 'published')
-        .eq('categories.slug', categorySlug)
+        .eq('category_id', category.id)
         .order('published_at', { ascending: false })
 
-    // also get categories for header
+    if (artError) {
+        console.error('Error loading articles for category', categorySlug, artError)
+        // we could throw to show 500 page, but for now render empty list
+    }
+
+    // 3. header categories (small subset)
     const { data: allCategories } = await supabase
         .from('categories')
-        .select('*')
-        .limit(6)
+        .select('id,name,slug')
+        .order('name') // fetch all categories for header
 
     return (
         <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
             <PublicHeader categories={allCategories || []} />
             <div className="container mx-auto px-4 py-12">
                 <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-8">
-                    {categories.name}
+                    {category.name}
                 </h1>
 
                 {articles && articles.length > 0 ? (

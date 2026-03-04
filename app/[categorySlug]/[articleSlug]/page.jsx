@@ -137,7 +137,7 @@ export default async function ArticlePage({ params }) {
   const { data: categories } = await supabase
     .from('categories')
     .select('*')
-    .limit(6)
+    .order('name') // pull full category list for header
 
   const articleUrl = `${siteUrl}/${article.categories?.slug || 'news'}/${article.slug}`
   const breadcrumbItems = [

@@ -73,7 +73,7 @@ export async function PATCH(request) {
             .update(updateData)
             .eq('id', id)
             .select()
-            .single()
+            .maybeSingle()
 
         if (error) {
             logger.error(`[${requestId}] Database error`, error)
