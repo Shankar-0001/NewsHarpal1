@@ -4,6 +4,13 @@ import { useState, useEffect } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { useToast } from '@/hooks/use-toast'
+import {
+    validateImageFile,
+    compressImage,
+    generateStoragePath,
+    formatFileSize,
+    getImageDimensions,
+} from '@/lib/image-utils'
 import TipTapEditor from '@/components/editor/TipTapEditor'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -156,45 +163,52 @@ export default function EditArticlePage() {
     }
 
     const handleImageUpload = (file) => {
-        return new Promise((resolve) => {
-            if (!file.type.includes('image')) {
-                toast({
-                    variant: 'destructive',
-                    title: 'Invalid file',
-                    description: 'Please upload an image file',
-                })
+        return new Promise(async (resolve) => {
+            if (!file) {
                 resolve(null)
                 return
             }
 
-            if (file.size > 5 * 1024 * 1024) {
-                toast({
-                    variant: 'destructive',
-                    title: 'File too large',
-                    description: 'Maximum file size is 5MB',
-                })
-                resolve(null)
-                return
-            }
+            try {
+                // Validate image
+                const validation = validateImageFile(file)
+                if (!validation.valid) {
+                    toast({
+                        variant: 'destructive',
+                        title: 'Invalid file',
+                        description: validation.errors.join(', '),
+                    })
+                    resolve(null)
+                    return
+                }
 
-            const objectUrl = URL.createObjectURL(file)
-            const img = new Image()
+                // Get image dimensions
+                const dimensions = await getImageDimensions(file)
 
-            img.onload = async () => {
-                URL.revokeObjectURL(objectUrl)
+                // Warn if image is smaller than recommended
+                if (dimensions.width < 1200 || dimensions.height < 630) {
+                    toast({
+                        title: 'Warning',
+                        description: `Image is ${dimensions.width}x${dimensions.height}. For best quality, use at least 1200x630px.`,
+                    })
+                }
+
+                // Compress image
+                const compressedFile = await compressImage(file, 1920, 1920)
 
                 if (!user) {
                     resolve(null)
                     return
                 }
 
+                // Upload to Supabase Storage
                 const fileExt = file.name.split('.').pop()
                 const fileName = `${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`
-                const filePath = `articles/${fileName}`
+                const filePath = generateStoragePath('articles', fileName)
 
                 const { data, error } = await supabase.storage
                     .from('media')
-                    .upload(filePath, file)
+                    .upload(filePath, compressedFile)
 
                 if (error) {
                     toast({
@@ -210,28 +224,37 @@ export default function EditArticlePage() {
                     .from('media')
                     .getPublicUrl(filePath)
 
-                await supabase.from('media_library').insert({
+                // Save to media library
+                const { error: insertError } = await supabase.from('media_library').insert({
                     filename: file.name,
                     file_url: publicUrl,
+                    file_path: filePath,
                     file_type: file.type,
                     file_size: file.size,
+                    original_width: dimensions.width,
+                    original_height: dimensions.height,
                     uploaded_by: user.id,
                 })
 
-                resolve(publicUrl)
-            }
+                if (insertError) {
+                    console.warn('Failed to save media library record:', insertError)
+                }
 
-            img.onerror = () => {
-                URL.revokeObjectURL(objectUrl)
+                toast({
+                    title: 'Success',
+                    description: `Image uploaded (${formatFileSize(compressedFile.size)})`,
+                })
+
+                resolve(publicUrl)
+            } catch (err) {
+                console.error('Error uploading image:', err)
                 toast({
                     variant: 'destructive',
-                    title: 'Invalid image',
-                    description: 'The file is not a valid image',
+                    title: 'Upload error',
+                    description: err.message || 'Failed to upload image',
                 })
                 resolve(null)
             }
-
-            img.src = objectUrl
         })
     }
 
