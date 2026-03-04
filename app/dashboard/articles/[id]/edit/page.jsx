@@ -247,7 +247,10 @@ export default function EditArticlePage() {
         try {
             const resp = await fetch(`/api/articles/${params.id}`, { method: 'DELETE' })
             const json = await resp.json()
-            if (!resp.ok) throw new Error(json.error || 'Failed to delete')
+            if (!resp.ok) {
+                console.error('Delete response error:', json)
+                throw new Error(json.error || 'Failed to delete')
+            }
 
             alert('Article deleted successfully!')
             router.push('/dashboard/articles')
