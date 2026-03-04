@@ -7,13 +7,17 @@ import { formatDistanceToNow } from 'date-fns'
 import PublicHeader from '@/components/layout/PublicHeader'
 import Image from 'next/image'
 
-export const dynamicParams = false // ensure static generation for known categories
+export const dynamicParams = true // allow on-demand generation of category pages
 
 export async function generateStaticParams() {
-    const supabase = await createClient()
-    const { data: categories } = await supabase.from('categories').select('slug')
-
-    return categories?.map(c => ({ categorySlug: c.slug })) || []
+    try {
+        const supabase = await createClient()
+        const { data: categories } = await supabase.from('categories').select('slug')
+        return categories?.map(c => ({ categorySlug: c.slug })) || []
+    } catch (error) {
+        console.error('Error generating static params for categories:', error)
+        return [] // return empty array if Supabase fails, pages will be generated on-demand
+    }
 }
 
 export default async function CategoryPage({ params }) {
