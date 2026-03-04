@@ -1,43 +1,96 @@
 import { createClient } from '@/lib/supabase/server'
-import { NextResponse } from 'next/server'
+import { apiResponse, logger } from '@/lib/api-utils'
+import { validateArticle, ValidationError } from '@/lib/validation'
+import { requireAuth, canEditArticle, canDeleteArticle } from '@/lib/auth-utils'
 
 export async function PATCH(request, { params }) {
-    try {
-        const data = await request.json()
-        const supabase = await createClient()
+    const requestId = `PATCH-article-${params.id}`
 
-        const { error } = await supabase
+    try {
+        // 1. Authenticate user
+        const user = await requireAuth()
+        logger.info(`[${requestId}] User authenticated`, { userId: user.userId })
+
+        // 2. Get request body
+        const data = await request.json()
+
+        // 3. Validate data
+        validateArticle(data)
+
+        // 4. Check permission
+        const canEdit = await canEditArticle(params.id, user)
+        if (!canEdit) {
+            logger.warn(`[${requestId}] Permission denied`, { userId: user.userId, articleId: params.id })
+            return apiResponse(403, null, 'Forbidden: Cannot edit this article')
+        }
+
+        // 5. Update article
+        const supabase = await createClient()
+        const { data: updatedArticle, error } = await supabase
             .from('articles')
-            .update(data)
+            .update({
+                ...data,
+                updated_at: new Date().toISOString(),
+            })
             .eq('id', params.id)
+            .select()
+            .single()
 
         if (error) {
-            console.error('Supabase update error:', error)
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            logger.error(`[${requestId}] Database error`, error)
+            return apiResponse(400, null, error.message)
         }
-        return NextResponse.json({ ok: true })
-    } catch (err) {
-        console.error('API update error', err)
-        return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 })
+
+        logger.info(`[${requestId}] Article updated successfully`)
+        return apiResponse(200, { article: updatedArticle })
+    } catch (error) {
+        if (error.name === 'ValidationError') {
+            return apiResponse(422, null, error.message)
+        }
+        if (error.name === 'AuthError') {
+            return apiResponse(error.message.includes('Forbidden') ? 403 : 401, null, error.message)
+        }
+
+        logger.error(requestId, error)
+        return apiResponse(500, null, 'Internal server error')
     }
 }
 
 export async function DELETE(request, { params }) {
-    try {
-        const supabase = await createClient()
+    const requestId = `DELETE-article-${params.id}`
 
+    try {
+        // 1. Authenticate user
+        const user = await requireAuth()
+        logger.info(`[${requestId}] User authenticated`, { userId: user.userId })
+
+        // 2. Check permission
+        const canDelete = await canDeleteArticle(params.id, user)
+        if (!canDelete) {
+            logger.warn(`[${requestId}] Permission denied`, { userId: user.userId })
+            return apiResponse(403, null, 'Forbidden: Cannot delete this article')
+        }
+
+        // 3. Delete article
+        const supabase = await createClient()
         const { error } = await supabase
             .from('articles')
             .delete()
             .eq('id', params.id)
 
         if (error) {
-            console.error('Supabase delete error:', error)
-            return NextResponse.json({ error: error.message }, { status: 400 })
+            logger.error(`[${requestId}] Database error`, error)
+            return apiResponse(400, null, error.message)
         }
-        return NextResponse.json({ ok: true })
-    } catch (err) {
-        console.error('API delete error', err)
-        return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 })
+
+        logger.info(`[${requestId}] Article deleted successfully`)
+        return apiResponse(200, { success: true })
+    } catch (error) {
+        if (error.name === 'AuthError') {
+            return apiResponse(error.message.includes('Forbidden') ? 403 : 401, null, error.message)
+        }
+
+        logger.error(requestId, error)
+        return apiResponse(500, null, 'Internal server error')
     }
 }
