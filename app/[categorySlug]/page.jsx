@@ -2,6 +2,9 @@ import { createClient } from '@/lib/supabase/server'
 import PublicHeader from '@/components/layout/PublicHeader'
 import ArticleCard from './ArticleCard'
 
+// Revalidate category pages every 5 minutes (ISR)
+export const revalidate = 300
+
 export const dynamicParams = true // allow on-demand generation for unknown categories
 
 export async function generateStaticParams() {

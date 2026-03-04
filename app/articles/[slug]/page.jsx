@@ -7,6 +7,14 @@ import { formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 
+// Revalidate every 10 minutes (ISR)
+export const revalidate = 600
+
+export const metadata = {
+  title: 'Article - NewsHarpal',
+  description: 'Read the latest article on NewsHarpal',
+}
+
 export default async function ArticlePage({ params }) {
   const supabase = await createClient()
   const { slug } = params

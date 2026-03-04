@@ -11,8 +11,11 @@ import PublicHeader from '@/components/layout/PublicHeader'
 import BreakingNewsTicker from '@/components/common/BreakingNewsTicker'
 import Image from 'next/image'
 
+// Revalidate homepage every 10 minutes (ISR)
+export const revalidate = 600
+
 export const metadata = {
-  title: 'NewsCMS - Latest News and Insights',
+  title: 'NewsHarpal - Latest News and Insights',
   description: 'Your source for the latest news, trending stories, and expert insights across multiple categories.',
   openGraph: {
     title: 'NewsHarpal - Latest News and Insights',
