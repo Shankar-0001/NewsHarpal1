@@ -29,6 +29,7 @@ export const metadata = {
 
 export default async function HomePage() {
   const supabase = await createClient()
+  const adsEnabled = process.env.NEXT_PUBLIC_ADS_ENABLED === 'true'
   let articles = []
   let trendingArticles = []
   let breakingNews = []
@@ -127,14 +128,14 @@ export default async function HomePage() {
         )}
 
         {/* Header Ad */}
-        <div className="container mx-auto px-4 py-4">
+        <div className="container mx-auto max-w-6xl px-4 py-4">
           <HeaderAd />
         </div>
 
         {/* Hero Section with Featured Article */}
         {featuredArticle && (
           <div className="bg-gradient-to-b from-blue-600 to-blue-800 dark:from-blue-900 dark:to-gray-900 text-white py-12 md:py-16">
-            <div className="container mx-auto px-4">
+            <div className="container mx-auto max-w-6xl px-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                 <div>
                   {featuredArticle.categories && (
@@ -186,7 +187,7 @@ export default async function HomePage() {
         )}
 
         {/* Main Content */}
-        <div className="container mx-auto px-4 py-12 md:py-16">
+        <div className="container mx-auto max-w-6xl px-4 py-12 md:py-16">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Articles Column */}
             <div className="lg:col-span-2">
@@ -243,7 +244,7 @@ export default async function HomePage() {
                           </div>
                         </Card>
                       </Link>
-                      {(idx + 1) % 4 === 0 && (
+                      {adsEnabled && (idx + 1) % 4 === 0 && (
                         <div className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
                           <InArticleAd />
                         </div>

@@ -48,6 +48,7 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function CategoryPage({ params, searchParams }) {
+  const adsEnabled = process.env.NEXT_PUBLIC_ADS_ENABLED === 'true'
   const categorySlug = params.categorySlug
   const page = Math.max(1, parseInt(searchParams?.page || '1', 10))
   const from = (page - 1) * PAGE_SIZE
@@ -96,7 +97,7 @@ export default async function CategoryPage({ params, searchParams }) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <PublicHeader categories={allCategories || []} />
-        <div className="container mx-auto px-4 py-12">
+        <div className="container mx-auto max-w-6xl px-4 py-12">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-8">{category.name}</h1>
 
           {articles && articles.length > 0 ? (
@@ -105,7 +106,7 @@ export default async function CategoryPage({ params, searchParams }) {
                 {articles.map((article, idx) => (
                   <div key={article.id} className="contents">
                     <ArticleCard article={article} />
-                    {(idx + 1) % 4 === 0 && (
+                    {adsEnabled && (idx + 1) % 4 === 0 && (
                       <div className="md:col-span-2 rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
                         <InArticleAd />
                       </div>
@@ -114,25 +115,27 @@ export default async function CategoryPage({ params, searchParams }) {
                 ))}
               </div>
 
-              <div className="mt-8 flex items-center justify-between text-sm">
-                {page > 1 ? (
-                  <a href={`/${categorySlug}?page=${page - 1}`} className="text-blue-600 hover:underline">
-                    Previous
-                  </a>
-                ) : (
-                  <span className="text-gray-400">Previous</span>
-                )}
+              {totalPages > 1 && (
+                <div className="mt-8 flex items-center justify-between text-sm">
+                  {page > 1 ? (
+                    <a href={`/${categorySlug}?page=${page - 1}`} className="text-blue-600 hover:underline">
+                      Previous
+                    </a>
+                  ) : (
+                    <span className="text-gray-400">Previous</span>
+                  )}
 
-                <span className="text-gray-600 dark:text-gray-400">Page {page} of {totalPages}</span>
+                  <span className="text-gray-600 dark:text-gray-400">Page {page} of {totalPages}</span>
 
-                {page < totalPages ? (
-                  <a href={`/${categorySlug}?page=${page + 1}`} className="text-blue-600 hover:underline">
-                    Next
-                  </a>
-                ) : (
-                  <span className="text-gray-400">Next</span>
-                )}
-              </div>
+                  {page < totalPages ? (
+                    <a href={`/${categorySlug}?page=${page + 1}`} className="text-blue-600 hover:underline">
+                      Next
+                    </a>
+                  ) : (
+                    <span className="text-gray-400">Next</span>
+                  )}
+                </div>
+              )}
             </>
           ) : (
             <p className="text-gray-600 dark:text-gray-400">No articles in this category yet.</p>
@@ -141,10 +144,13 @@ export default async function CategoryPage({ params, searchParams }) {
       </div>
     )
   } catch (error) {
+    if (error?.digest === 'NEXT_NOT_FOUND') {
+      throw error
+    }
     console.error('Category page SSR failed:', error)
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="container mx-auto px-4 py-12">
+        <div className="container mx-auto max-w-6xl px-4 py-12">
           <p className="text-gray-700 dark:text-gray-300">Category is temporarily unavailable. Please try again.</p>
         </div>
       </div>

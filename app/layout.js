@@ -8,15 +8,21 @@ export const metadata = {
 }
 
 export default function RootLayout({ children }) {
+  const adsEnabled = process.env.NEXT_PUBLIC_ADS_ENABLED === 'true'
+  const adsenseClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID
+  const adsenseScriptSrc = adsenseClientId
+    ? `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${adsenseClientId}`
+    : null
+
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="robots" content="max-image-preview:large" />
         {/* AdSense Script */}
-        {process.env.NEXT_PUBLIC_ADS_ENABLED === 'true' && (
+        {adsEnabled && adsenseScriptSrc && (
           <script
             async
-            src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX"
+            src={adsenseScriptSrc}
             crossOrigin="anonymous"
           />
         )}

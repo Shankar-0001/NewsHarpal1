@@ -102,7 +102,7 @@ export default function NewAuthorPage() {
     }
 
     return (
-        <div className="p-8 max-w-4xl mx-auto">
+        <div className="p-8 max-w-6xl mx-auto">
             <div className="mb-8">
                 <Link href="/dashboard/authors">
                     <Button variant="ghost" className="mb-4">

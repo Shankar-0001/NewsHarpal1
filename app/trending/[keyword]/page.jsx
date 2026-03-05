@@ -3,11 +3,15 @@ import { createClient as createPublicClient } from '@supabase/supabase-js'
 import PublicHeader from '@/components/layout/PublicHeader'
 import StructuredData from '@/components/seo/StructuredData'
 import ArticleMiniCard from '@/components/content/ArticleMiniCard'
+import WebStoryCard from '@/components/content/WebStoryCard'
 import { extractTopicKeywords, matchesKeyword } from '@/lib/topic-utils'
-import { absoluteUrl } from '@/lib/site-config'
+import { absoluteUrl, slugFromText } from '@/lib/site-config'
 import { notFound } from 'next/navigation'
+import Image from 'next/image'
 
 export const revalidate = 900
+
+const HERO_IMAGE = 'https://images.unsplash.com/photo-1469474968028-56623f02e42e?w=1600&q=80&auto=format&fit=crop'
 
 export async function generateStaticParams() {
   try {
@@ -15,14 +19,20 @@ export async function generateStaticParams() {
       process.env.NEXT_PUBLIC_SUPABASE_URL,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
     )
-    const { data: articles } = await supabase
-      .from('articles')
-      .select('title, excerpt, content')
-      .eq('status', 'published')
-      .order('published_at', { ascending: false })
-      .limit(200)
 
-    return extractTopicKeywords(articles || [], 40).map((item) => ({ keyword: item.slug }))
+    const [{ data: trendRows }, { data: articles }] = await Promise.all([
+      supabase.from('trending_topics').select('slug').order('updated_at', { ascending: false }).limit(200),
+      supabase
+        .from('articles')
+        .select('title, excerpt, content')
+        .eq('status', 'published')
+        .order('published_at', { ascending: false })
+        .limit(200),
+    ])
+
+    const fallback = extractTopicKeywords(articles || [], 40).map((item) => item.slug)
+    const merged = [...new Set([...(trendRows || []).map((r) => r.slug), ...fallback])]
+    return merged.map((slug) => ({ keyword: slug }))
   } catch {
     return []
   }
@@ -32,60 +42,250 @@ export async function generateMetadata({ params }) {
   const keyword = decodeURIComponent(params.keyword).replace(/-/g, ' ')
   const url = absoluteUrl(`/trending/${params.keyword}`)
   return {
-    title: `Trending ${keyword} News | NewsHarpal`,
-    description: `Live trending stories for ${keyword} ranked by views, likes, and shares.`,
+    title: `${keyword} News, Updates and Explanation`,
+    description: `Latest news, updates and analysis about ${keyword}`,
     alternates: { canonical: url },
-    openGraph: { title: `Trending ${keyword} News`, description: `Top engagement stories about ${keyword}.`, url, type: 'website' },
-    twitter: { card: 'summary_large_image', title: `Trending ${keyword} News`, description: `Top engagement stories about ${keyword}.` },
+    openGraph: {
+      title: `${keyword} News, Updates and Explanation`,
+      description: `Latest news, updates and analysis about ${keyword}`,
+      url,
+      type: 'website',
+      images: [{ url: HERO_IMAGE, width: 1600, height: 900, alt: `${keyword} trending news` }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${keyword} News, Updates and Explanation`,
+      description: `Latest news, updates and analysis about ${keyword}`,
+      images: [HERO_IMAGE],
+    },
+    robots: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
   }
 }
 
+function buildInternalLinks({ keywordSlug, relatedTopics, latestArticles, explainedArticles, trendingArticles, stories }) {
+  const links = []
+
+  links.push({ href: `/topic/${keywordSlug}`, label: `Topic: ${keywordSlug.replace(/-/g, ' ')}` })
+  links.push({ href: `/explained/${keywordSlug}`, label: `${keywordSlug.replace(/-/g, ' ')} explained` })
+
+  for (const item of relatedTopics || []) {
+    links.push({ href: `/trending/${item.slug}`, label: `Trending ${item.keyword}` })
+    links.push({ href: `/topic/${item.slug}`, label: `Topic ${item.keyword}` })
+  }
+
+  for (const item of latestArticles || []) {
+    links.push({ href: `/${item.categories?.slug || 'news'}/${item.slug}`, label: item.title })
+  }
+  for (const item of explainedArticles || []) {
+    links.push({ href: `/${item.categories?.slug || 'news'}/${item.slug}`, label: item.title })
+  }
+  for (const item of trendingArticles || []) {
+    links.push({ href: `/${item.categories?.slug || 'news'}/${item.slug}`, label: item.title })
+  }
+  for (const story of stories || []) {
+    links.push({ href: `/web-stories/${story.slug}`, label: story.title })
+  }
+
+  const seen = new Set()
+  return links.filter((item) => {
+    if (!item?.href || seen.has(item.href)) return false
+    seen.add(item.href)
+    return true
+  })
+}
+
 export default async function TrendingKeywordPage({ params }) {
-  const keyword = decodeURIComponent(params.keyword).replace(/-/g, ' ').trim()
+  const keywordSlug = decodeURIComponent(params.keyword)
+  const keyword = keywordSlug.replace(/-/g, ' ').trim().toLowerCase()
   const supabase = await createClient()
 
-  const [{ data: categories }, { data: articles }, { data: engagementRows }] = await Promise.all([
+  const [
+    { data: categories },
+    { data: trendRows },
+    { data: allArticles },
+    { data: engagementRows },
+    { data: allStories },
+  ] = await Promise.all([
     supabase.from('categories').select('id, name, slug').order('name'),
+    supabase.from('trending_topics').select('keyword, slug, search_volume, created_at, updated_at').order('search_volume', { ascending: false }).limit(200),
     supabase
       .from('articles')
       .select('id, title, slug, excerpt, content, featured_image_url, published_at, categories(name, slug), authors(name)')
       .eq('status', 'published')
       .order('published_at', { ascending: false })
-      .limit(120),
-    supabase.from('article_engagement').select('article_id, views, likes, shares').limit(1000),
+      .limit(180),
+    supabase.from('article_engagement').select('article_id, views, likes, shares').limit(1200),
+    supabase.from('web_stories').select('id, title, slug, cover_image, slides, created_at').order('created_at', { ascending: false }).limit(80),
   ])
 
-  const filtered = (articles || []).filter((a) => matchesKeyword(a, keyword))
-  if (filtered.length === 0) notFound()
+  const normalizedRequested = slugFromText(keyword)
+  const trendKeyword = (trendRows || []).find((row) => row.slug === normalizedRequested)
+
+  const relatedByKeyword = (allArticles || []).filter((article) => matchesKeyword(article, keyword))
+
+  // Keep backward compatibility: allow page if we have either cached trend or matching articles.
+  if (!trendKeyword && relatedByKeyword.length === 0) {
+    notFound()
+  }
 
   const scoreMap = new Map((engagementRows || []).map((row) => [row.article_id, (row.views || 0) + (row.likes || 0) * 3 + (row.shares || 0) * 5]))
-  const ranked = filtered
+
+  const trendingArticles = [...relatedByKeyword]
     .map((a) => ({ ...a, _score: scoreMap.get(a.id) || 0 }))
     .sort((a, b) => b._score - a._score)
+    .slice(0, 12)
+
+  const latestArticles = [...relatedByKeyword]
+    .sort((a, b) => new Date(b.published_at) - new Date(a.published_at))
+    .slice(0, 8)
+
+  const explainedArticles = relatedByKeyword
+    .filter((a) => /explain|guide|what is|how to|analysis/i.test(`${a.title || ''} ${a.excerpt || ''}`))
+    .slice(0, 6)
+
+  const relatedTopics = (trendRows || [])
+    .filter((row) => row.slug !== normalizedRequested)
+    .slice(0, 8)
+
+  const relatedStories = (allStories || [])
+    .filter((story) => {
+      const text = `${story.title || ''} ${JSON.stringify(story.slides || [])}`.toLowerCase()
+      return text.includes(keyword)
+    })
+    .slice(0, 6)
+
+  const internalLinks = buildInternalLinks({
+    keywordSlug: normalizedRequested,
+    relatedTopics,
+    latestArticles,
+    explainedArticles,
+    trendingArticles,
+    stories: relatedStories,
+  }).slice(0, 20)
+
+  const finalLinks = internalLinks.length >= 10
+    ? internalLinks
+    : [
+        ...internalLinks,
+        { href: '/', label: 'Home' },
+        { href: `/topic/${normalizedRequested}`, label: `Topic ${keyword}` },
+        { href: `/explained/${normalizedRequested}`, label: `${keyword} explained` },
+      ]
+
+  const fillerLinks = [
+    { href: '/', label: 'Home' },
+    { href: `/topic/${normalizedRequested}`, label: `Topic ${keyword}` },
+    { href: `/explained/${normalizedRequested}`, label: `${keyword} explained` },
+    { href: `/trending/${normalizedRequested}`, label: `Trending ${keyword}` },
+    ...(categories || []).slice(0, 8).map((c) => ({ href: `/${c.slug}`, label: `${c.name} news` })),
+    { href: '/web-stories', label: 'Top web stories' },
+  ]
+
+  for (const link of fillerLinks) {
+    if (finalLinks.length >= 10) break
+    if (!finalLinks.find((l) => l.href === link.href)) {
+      finalLinks.push(link)
+    }
+  }
 
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'ItemList',
-    name: `Trending ${keyword} stories`,
-    itemListElement: ranked.slice(0, 15).map((item, idx) => ({
-      '@type': 'ListItem',
-      position: idx + 1,
-      url: absoluteUrl(`/${item.categories?.slug || 'news'}/${item.slug}`),
-      name: item.title,
-    })),
+    '@type': 'CollectionPage',
+    headline: `${keyword} News, Updates and Explanation`,
+    description: `Latest news, updates and analysis about ${keyword}`,
+    datePublished: trendKeyword?.created_at || new Date().toISOString(),
+    keywords: [keyword, 'news', 'trending', 'updates'],
+    url: absoluteUrl(`/trending/${normalizedRequested}`),
   }
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <StructuredData data={jsonLd} />
       <PublicHeader categories={categories || []} />
-      <main className="container mx-auto px-4 py-10">
-        <h1 className="text-3xl font-bold mb-2 text-gray-900 dark:text-white">Trending: {keyword}</h1>
-        <p className="text-gray-600 dark:text-gray-400 mb-8">Ranked by engagement score (views + likes*3 + shares*5).</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {ranked.slice(0, 12).map((article) => <ArticleMiniCard key={article.id} article={article} />)}
-        </div>
+      <main className="container mx-auto max-w-6xl px-4 py-10 md:py-14">
+        <section className="mb-10 overflow-hidden rounded-xl border dark:border-gray-700 bg-white dark:bg-gray-800">
+          <div className="relative aspect-[16/9] w-full">
+            <Image
+              src={HERO_IMAGE}
+              alt={`${keyword} trending hero image`}
+              fill
+              priority
+              className="object-cover"
+              sizes="(max-width: 1200px) 100vw, 1200px"
+            />
+          </div>
+          <div className="p-6 md:p-8">
+            <h1 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-3 capitalize">
+              {keyword} Trends
+            </h1>
+            <p className="text-gray-600 dark:text-gray-300">
+              Real-time coverage, explainers, and related content around {keyword}.
+            </p>
+          </div>
+        </section>
+
+        <section className="mb-10">
+          <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Latest Articles</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {latestArticles.slice(0, 9).map((article) => <ArticleMiniCard key={article.id} article={article} />)}
+          </div>
+        </section>
+
+        <section className="mb-10">
+          <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Explained Articles</h2>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            {(explainedArticles.length ? explainedArticles : latestArticles.slice(0, 6)).map((article) => (
+              <ArticleMiniCard key={article.id} article={article} compact />
+            ))}
+          </div>
+        </section>
+
+        <section className="mb-10">
+          <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Trending Articles</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {trendingArticles.slice(0, 9).map((article) => <ArticleMiniCard key={article.id} article={article} />)}
+          </div>
+        </section>
+
+        <section className="mb-10">
+          <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Related Topics</h2>
+          <div className="flex flex-wrap gap-2">
+            {relatedTopics.map((topic) => (
+              <a key={topic.slug} href={`/trending/${topic.slug}`} className="px-3 py-1.5 rounded-full border text-sm text-blue-700 dark:text-blue-300 hover:underline">
+                {topic.keyword}
+              </a>
+            ))}
+          </div>
+        </section>
+
+        <section className="mb-10">
+          <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Web Stories</h2>
+          {relatedStories.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
+              {relatedStories.map((story) => <WebStoryCard key={story.id} story={story} />)}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-600 dark:text-gray-400">No related web stories yet.</p>
+          )}
+        </section>
+
+        <section>
+          <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Internal Links</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {finalLinks.slice(0, 20).map((item, idx) => (
+              <a key={`${item.href}-${idx}`} href={item.href} className="text-blue-600 dark:text-blue-400 hover:underline">
+                {item.label}
+              </a>
+            ))}
+          </div>
+        </section>
       </main>
     </div>
   )

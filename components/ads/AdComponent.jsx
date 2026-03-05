@@ -5,8 +5,9 @@ import { useEffect } from 'react'
 export default function AdComponent({ slot, format = 'auto', responsive = true, className = '' }) {
   // Check if ads are enabled (you can add this to admin settings)
   const adsEnabled = process.env.NEXT_PUBLIC_ADS_ENABLED === 'true'
+  const adClientId = process.env.NEXT_PUBLIC_ADSENSE_CLIENT_ID
   
-  if (!adsEnabled) {
+  if (!adsEnabled || !adClientId) {
     return null
   }
 
@@ -23,7 +24,7 @@ export default function AdComponent({ slot, format = 'auto', responsive = true, 
       <ins
         className="adsbygoogle"
         style={{ display: 'block' }}
-        data-ad-client="ca-pub-XXXXXXXXXXXXXXXX" // Replace with your AdSense ID
+        data-ad-client={adClientId}
         data-ad-slot={slot}
         data-ad-format={format}
         data-full-width-responsive={responsive}

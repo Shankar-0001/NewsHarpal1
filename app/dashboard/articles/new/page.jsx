@@ -363,7 +363,7 @@ export default function ArticleEditorPage() {
 
   if (initializing) {
     return (
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <div className="text-center py-12">
           <p className="text-gray-600 dark:text-gray-400">Loading editor...</p>
         </div>
@@ -373,7 +373,7 @@ export default function ArticleEditorPage() {
 
   if (error) {
     return (
-      <div className="max-w-5xl mx-auto">
+      <div className="max-w-6xl mx-auto">
         <Alert variant="destructive">
           <AlertTriangle className="h-4 w-4" />
           <AlertDescription className="ml-2">
@@ -385,7 +385,7 @@ export default function ArticleEditorPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Create New Article</h1>

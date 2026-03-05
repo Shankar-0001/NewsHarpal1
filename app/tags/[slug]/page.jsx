@@ -13,6 +13,7 @@ export const revalidate = 300
 export default async function TagPage({ params }) {
   try {
     const supabase = await createClient()
+    const adsEnabled = process.env.NEXT_PUBLIC_ADS_ENABLED === 'true'
     const { slug } = params
 
   const { data: tag } = await supabase
@@ -76,7 +77,7 @@ export default async function TagPage({ params }) {
                   </div>
                 </Card>
               </Link>
-              {(idx + 1) % 4 === 0 && (
+              {adsEnabled && (idx + 1) % 4 === 0 && (
                 <div className="md:col-span-2 rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
                   <InArticleAd />
                 </div>

@@ -263,7 +263,7 @@ export default function WebStoryEditor({ mode = 'create', storyId = null }) {
                 </div>
                 <div>
                   <Label htmlFor={`slide_cta_url_${idx}`}>CTA Website URL (Slide 11)</Label>
-                  <Input id={`slide_cta_url_${idx}`} name={`slide_cta_url_${idx}`} value={slide.cta_url || ''} onChange={(e) => setSlide(idx, { cta_url: e.target.value })} placeholder="https://your-site.com" />
+                  <Input id={`slide_cta_url_${idx}`} name={`slide_cta_url_${idx}`} value={slide.cta_url || ''} onChange={(e) => setSlide(idx, { cta_url: e.target.value })} placeholder="https://news-harpal.vercel.app/" />
                 </div>
               </>
             )}
@@ -271,7 +271,7 @@ export default function WebStoryEditor({ mode = 'create', storyId = null }) {
             {idx === 11 && (
               <div>
                 <Label htmlFor={`slide_whatsapp_${idx}`}>WhatsApp Group Join URL (Slide 12)</Label>
-                <Input id={`slide_whatsapp_${idx}`} name={`slide_whatsapp_${idx}`} value={slide.whatsapp_group_url || ''} onChange={(e) => setSlide(idx, { whatsapp_group_url: e.target.value })} placeholder="https://chat.whatsapp.com/..." />
+                <Input id={`slide_whatsapp_${idx}`} name={`slide_whatsapp_${idx}`} value={slide.whatsapp_group_url || ''} onChange={(e) => setSlide(idx, { whatsapp_group_url: e.target.value })} placeholder="https://chat.whatsapp.com/" />
               </div>
             )}
           </div>

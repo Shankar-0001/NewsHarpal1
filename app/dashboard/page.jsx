@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { FileText, FolderOpen, Tag, Users, ArrowRight, Plus } from 'lucide-react'
+import { FileText, FolderOpen, Tag, Users, ArrowRight, Plus, TrendingUp } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 
 export const revalidate = 0
@@ -39,6 +39,17 @@ export default async function DashboardPage() {
   const { count: authorsCount } = await supabase
     .from('authors')
     .select('*', { count: 'exact', head: true })
+
+  const { count: trendingTopicsCount } = await supabase
+    .from('trending_topics')
+    .select('*', { count: 'exact', head: true })
+
+  const { data: latestTrend } = await supabase
+    .from('trending_topics')
+    .select('updated_at')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
 
   // Get recent articles
   const { data: recentArticles } = await supabase
@@ -155,7 +166,7 @@ export default async function DashboardPage() {
                           {article.title}
                         </p>
                         <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {article.authors?.name} • {formatDistanceToNow(new Date(article.created_at), { addSuffix: true })}
+                          {article.authors?.name} - {formatDistanceToNow(new Date(article.created_at), { addSuffix: true })}
                         </p>
                       </div>
                       <Badge className={`ml-2 ${getStatusColor(article.status)} capitalize text-xs`}>
@@ -173,48 +184,77 @@ export default async function DashboardPage() {
           </Card>
         </div>
 
-        {/* Quick Actions */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Link href="/dashboard/articles/new" className="block">
-              <Button className="w-full justify-start">
-                <Plus className="mr-2 h-4 w-4" />
-                New Article
-              </Button>
-            </Link>
-            <Link href="/dashboard/articles" className="block">
-              <Button variant="outline" className="w-full justify-start">
-                <FileText className="mr-2 h-4 w-4" />
-                All Articles
-              </Button>
-            </Link>
-            <Link href="/dashboard/media" className="block">
-              <Button variant="outline" className="w-full justify-start">
-                <Tag className="mr-2 h-4 w-4" />
-                Media Library
-              </Button>
-            </Link>
-            {userData?.role === 'admin' && (
-              <>
-                <Link href="/dashboard/categories" className="block">
-                  <Button variant="outline" className="w-full justify-start">
-                    <FolderOpen className="mr-2 h-4 w-4" />
-                    Categories
-                  </Button>
-                </Link>
-                <Link href="/dashboard/authors" className="block">
-                  <Button variant="outline" className="w-full justify-start">
-                    <Users className="mr-2 h-4 w-4" />
-                    Authors
-                  </Button>
-                </Link>
-              </>
-            )}
-          </CardContent>
-        </Card>
+        <div className="space-y-6">
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Quick Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Link href="/dashboard/articles/new" className="block">
+                <Button className="w-full justify-start">
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Article
+                </Button>
+              </Link>
+              <Link href="/dashboard/articles" className="block">
+                <Button variant="outline" className="w-full justify-start">
+                  <FileText className="mr-2 h-4 w-4" />
+                  All Articles
+                </Button>
+              </Link>
+              <Link href="/dashboard/media" className="block">
+                <Button variant="outline" className="w-full justify-start">
+                  <Tag className="mr-2 h-4 w-4" />
+                  Media Library
+                </Button>
+              </Link>
+              {userData?.role === 'admin' && (
+                <>
+                  <Link href="/dashboard/categories" className="block">
+                    <Button variant="outline" className="w-full justify-start">
+                      <FolderOpen className="mr-2 h-4 w-4" />
+                      Categories
+                    </Button>
+                  </Link>
+                  <Link href="/dashboard/authors" className="block">
+                    <Button variant="outline" className="w-full justify-start">
+                      <Users className="mr-2 h-4 w-4" />
+                      Authors
+                    </Button>
+                  </Link>
+                </>
+              )}
+            </CardContent>
+          </Card>
+
+          {userData?.role === 'admin' && (
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Trending Engine Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-2 text-sm">
+                <p className="text-gray-700 dark:text-gray-300">
+                  Cached topics: <span className="font-semibold">{trendingTopicsCount || 0}</span>
+                </p>
+                <p className="text-gray-700 dark:text-gray-300">
+                  Last fetch:{' '}
+                  <span className="font-semibold">
+                    {latestTrend?.updated_at
+                      ? formatDistanceToNow(new Date(latestTrend.updated_at), { addSuffix: true })
+                      : 'Never'}
+                  </span>
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Cron endpoint: /api/cron/fetch-trends
+                </p>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   )

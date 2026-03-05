@@ -28,6 +28,7 @@ export async function generateMetadata({ params }) {
 
 export default async function CategoryHubPage({ params }) {
   const supabase = await createClient()
+  const adsEnabled = process.env.NEXT_PUBLIC_ADS_ENABLED === 'true'
 
   const [{ data: categories }, { data: category }] = await Promise.all([
     supabase.from('categories').select('id, name, slug').order('name'),
@@ -71,7 +72,7 @@ export default async function CategoryHubPage({ params }) {
       <StructuredData data={jsonLd} />
       <PublicHeader categories={categories || []} />
 
-      <main className="container mx-auto px-4 py-12 md:py-16">
+      <main className="container mx-auto max-w-6xl px-4 py-12 md:py-16">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">{category.name} Authority Hub</h1>
 
         {featured && (
@@ -102,7 +103,7 @@ export default async function CategoryHubPage({ params }) {
             {(articles || []).slice(1, 10).map((article, idx) => (
               <div key={article.id} className="contents">
                 <ArticleMiniCard article={article} />
-                {(idx + 1) % 4 === 0 && (
+                {adsEnabled && (idx + 1) % 4 === 0 && (
                   <div className="md:col-span-2 lg:col-span-3 rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
                     <InArticleAd />
                   </div>

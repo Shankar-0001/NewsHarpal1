@@ -4,12 +4,19 @@ import { urlsetXml, xmlResponse } from '@/lib/sitemap-utils'
 
 export async function GET() {
   const supabase = await createClient()
-  const { data: articles } = await supabase
-    .from('articles')
-    .select('slug, updated_at, published_at, categories(slug)')
-    .eq('status', 'published')
-    .order('published_at', { ascending: false })
-    .limit(2000)
+  const [{ data: articles }, { data: trendRows }] = await Promise.all([
+    supabase
+      .from('articles')
+      .select('slug, updated_at, published_at, categories(slug)')
+      .eq('status', 'published')
+      .order('published_at', { ascending: false })
+      .limit(2000),
+    supabase
+      .from('trending_topics')
+      .select('slug, updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(500),
+  ])
 
   const entries = (articles || []).map((a) => ({
     loc: absoluteUrl(`/${a.categories?.slug || 'news'}/${a.slug}`),
@@ -18,5 +25,12 @@ export async function GET() {
     priority: 0.8,
   }))
 
-  return xmlResponse(urlsetXml(entries))
+  const trendingEntries = (trendRows || []).map((row) => ({
+    loc: absoluteUrl(`/trending/${row.slug}`),
+    lastmod: new Date(row.updated_at || Date.now()).toISOString(),
+    changefreq: 'daily',
+    priority: 0.7,
+  }))
+
+  return xmlResponse(urlsetXml([...entries, ...trendingEntries]))
 }

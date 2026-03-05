@@ -169,7 +169,7 @@ export default async function ArticlePage({ params }) {
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
         <div className="bg-white border-b">
-          <div className="container mx-auto px-4 py-4">
+          <div className="container mx-auto max-w-6xl px-4 py-4">
             <Link href="/">
               <Button variant="ghost">
                 <ArrowLeft className="mr-2 h-4 w-4" />
@@ -180,7 +180,7 @@ export default async function ArticlePage({ params }) {
         </div>
 
         {/* Article Content */}
-        <article className="container mx-auto px-4 py-12 max-w-4xl">
+        <article className="container mx-auto px-4 py-12 max-w-6xl">
           <Card className="p-8 md:p-12">
             {/* Category Badge */}
             {article.categories && (
@@ -278,7 +278,7 @@ export default async function ArticlePage({ params }) {
         </article>
 
         {relatedArticles && relatedArticles.length > 0 && (
-          <section className="container mx-auto px-4 max-w-4xl pb-8">
+          <section className="container mx-auto px-4 max-w-6xl pb-8">
             <h2 className="text-2xl font-bold mb-4">You May Also Like</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {relatedArticles.map((item) => (
@@ -289,7 +289,7 @@ export default async function ArticlePage({ params }) {
         )}
 
         {trendingArticles && trendingArticles.length > 0 && (
-          <section className="container mx-auto px-4 max-w-4xl pb-12">
+          <section className="container mx-auto px-4 max-w-6xl pb-12">
             <h2 className="text-2xl font-bold mb-4">Trending Now</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {trendingArticles.map((item) => (
@@ -300,7 +300,7 @@ export default async function ArticlePage({ params }) {
         )}
 
         {latestArticles && latestArticles.length > 0 && (
-          <section className="container mx-auto px-4 max-w-4xl pb-12">
+          <section className="container mx-auto px-4 max-w-6xl pb-12">
             <h2 className="text-2xl font-bold mb-4">Latest News</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {latestArticles.map((item) => (
@@ -316,7 +316,7 @@ export default async function ArticlePage({ params }) {
     console.error('Legacy article page SSR failed:', error)
     return (
       <div className="min-h-screen bg-gray-50">
-        <div className="container mx-auto px-4 py-12">
+        <div className="container mx-auto max-w-6xl px-4 py-12">
           <p className="text-gray-700">Article is temporarily unavailable. Please try again.</p>
         </div>
       </div>
