@@ -71,6 +71,7 @@ export default function SignupPage() {
               <Label htmlFor="name" className="dark:text-gray-200">Full Name</Label>
               <Input
                 id="name"
+                name="name"
                 type="text"
                 placeholder="John Doe"
                 value={name}
@@ -83,6 +84,7 @@ export default function SignupPage() {
               <Label htmlFor="email" className="dark:text-gray-200">Email</Label>
               <Input
                 id="email"
+                name="email"
                 type="email"
                 placeholder="you@example.com"
                 value={email}
@@ -95,6 +97,7 @@ export default function SignupPage() {
               <Label htmlFor="password" className="dark:text-gray-200">Password</Label>
               <Input
                 id="password"
+                name="password"
                 type="password"
                 placeholder="••••••••"
                 value={password}

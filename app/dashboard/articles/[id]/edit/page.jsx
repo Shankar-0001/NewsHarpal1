@@ -45,6 +45,7 @@ export default function EditArticlePage() {
     const [user, setUser] = useState(null)
     const [userRole, setUserRole] = useState(null)
     const [authorId, setAuthorId] = useState(null)
+    const [selectedAuthorId, setSelectedAuthorId] = useState('')
     const [article, setArticle] = useState(null)
     const [showDeleteDialog, setShowDeleteDialog] = useState(false)
     const [error, setError] = useState(null)
@@ -64,6 +65,8 @@ export default function EditArticlePage() {
     // Options
     const [categories, setCategories] = useState([])
     const [tags, setTags] = useState([])
+    const [authors, setAuthors] = useState([])
+    const [newTagName, setNewTagName] = useState('')
 
     useEffect(() => {
         loadUserAndArticle()
@@ -94,6 +97,7 @@ export default function EditArticlePage() {
                 .single()
 
             setAuthorId(authorData?.id)
+            setSelectedAuthorId(authorData?.id || '')
 
             // Load the article
             const { data: articleData, error: articleError } = await supabase
@@ -124,6 +128,7 @@ export default function EditArticlePage() {
             setExcerpt(articleData.excerpt || '')
             setContent({ json: articleData.content_json, html: articleData.content || '' })
             setCategoryId(articleData.category_id || '')
+            setSelectedAuthorId(articleData.author_id || authorData?.id || '')
             setFeaturedImage(articleData.featured_image_url || '')
             setSeoTitle(articleData.seo_title || '')
             setSeoDescription(articleData.seo_description || '')
@@ -143,6 +148,16 @@ export default function EditArticlePage() {
                 .from('tags')
                 .select('id, name')
                 .order('name')
+
+            if (userData?.role === 'admin') {
+                const { data: authorsData } = await supabase
+                    .from('authors')
+                    .select('id, name')
+                    .order('name')
+                setAuthors(authorsData || [])
+            } else {
+                setAuthors(authorData ? [{ id: authorData.id, name: user.email?.split('@')[0] || 'Me' }] : [])
+            }
 
             setCategories(categoriesData || [])
             setTags(tagsData || [])
@@ -296,6 +311,7 @@ export default function EditArticlePage() {
                 seo_description: seoDescription || excerpt,
                 status: finalStatus,
                 published_at: finalStatus === 'published' ? new Date().toISOString() : null,
+                author_id: selectedAuthorId || authorId,
             }
 
             // Update via API proxy
@@ -381,6 +397,33 @@ export default function EditArticlePage() {
                 ? prev.filter(id => id !== tagId)
                 : [...prev, tagId]
         )
+    }
+
+    const createTag = async () => {
+        const name = newTagName.trim()
+        if (!name) return
+        const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+
+        const response = await fetch('/api/articles/tags', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, slug }),
+        })
+
+        const result = await response.json()
+        if (response.ok && result?.data?.tag) {
+            const createdTag = result.data.tag
+            setTags((prev) => [...prev, createdTag])
+            setSelectedTags((prev) => [...prev, createdTag.id])
+            setNewTagName('')
+            return
+        }
+
+        toast({
+            variant: 'destructive',
+            title: 'Tag creation failed',
+            description: result?.error || 'Could not create tag',
+        })
     }
 
     if (loading) {
@@ -473,7 +516,7 @@ export default function EditArticlePage() {
                     </CardContent>
                 </Card>
 
-                {/* Category and Featured Image */}
+                {/* Category and Author */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <Card>
                         <CardHeader>
@@ -498,18 +541,39 @@ export default function EditArticlePage() {
 
                     <Card>
                         <CardHeader>
-                            <CardTitle className="text-lg">Featured Image</CardTitle>
+                            <CardTitle className="text-lg">Author</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <Input
-                                type="text"
-                                placeholder="Image URL..."
-                                value={featuredImage}
-                                onChange={(e) => setFeaturedImage(e.target.value)}
-                            />
+                            <Select value={selectedAuthorId} onValueChange={setSelectedAuthorId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select author" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {authors.map(author => (
+                                        <SelectItem key={author.id} value={author.id}>
+                                            {author.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
                         </CardContent>
                     </Card>
                 </div>
+
+                {/* Featured Image */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="text-lg">Featured Image</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Input
+                            type="text"
+                            placeholder="Image URL..."
+                            value={featuredImage}
+                            onChange={(e) => setFeaturedImage(e.target.value)}
+                        />
+                    </CardContent>
+                </Card>
 
                 {/* Tags */}
                 <Card>
@@ -517,6 +581,16 @@ export default function EditArticlePage() {
                         <CardTitle className="text-lg">Tags</CardTitle>
                     </CardHeader>
                     <CardContent>
+                        <div className="flex gap-2 mb-4">
+                            <Input
+                                value={newTagName}
+                                onChange={(e) => setNewTagName(e.target.value)}
+                                placeholder="Create new tag"
+                            />
+                            <Button type="button" variant="outline" onClick={createTag}>
+                                Add
+                            </Button>
+                        </div>
                         <div className="flex flex-wrap gap-2">
                             {tags.length > 0 ? (
                                 tags.map(tag => (

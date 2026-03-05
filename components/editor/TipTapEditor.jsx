@@ -265,6 +265,7 @@ export default function TipTapEditor({ content, onChange, onImageUpload }) {
                 <input
                   type="checkbox"
                   id="newTab"
+                  name="openInNewTab"
                   checked={linkOpenInNewTab}
                   onChange={(e) => setLinkOpenInNewTab(e.target.checked)}
                 />

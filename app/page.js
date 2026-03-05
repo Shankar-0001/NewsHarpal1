@@ -26,44 +26,52 @@ export const metadata = {
 
 export default async function HomePage() {
   const supabase = await createClient()
+  let articles = []
+  let trendingArticles = []
+  let breakingNews = []
+  let categories = []
 
-  // Get published articles
-  const { data: articles } = await supabase
-    .from('articles')
-    .select(`
-      *,
-      authors (name),
-      categories (name, slug)
-    `)
-    .eq('status', 'published')
-    .order('published_at', { ascending: false })
-    .limit(12)
+  try {
+    const [articlesRes, trendingRes, breakingRes, categoriesRes] = await Promise.all([
+      supabase
+        .from('articles')
+        .select(`
+          *,
+          authors (name),
+          categories (name, slug)
+        `)
+        .eq('status', 'published')
+        .order('published_at', { ascending: false })
+        .limit(12),
+      supabase
+        .from('articles')
+        .select(`
+          *,
+          authors (name),
+          categories (name, slug)
+        `)
+        .eq('status', 'published')
+        .order('published_at', { ascending: false })
+        .limit(5),
+      supabase
+        .from('articles')
+        .select('id, title, slug, categories(slug)')
+        .eq('status', 'published')
+        .order('published_at', { ascending: false })
+        .limit(5),
+      supabase
+        .from('categories')
+        .select('*')
+        .order('name'),
+    ])
 
-  // Get trending articles (most recent)
-  const { data: trendingArticles } = await supabase
-    .from('articles')
-    .select(`
-      *,
-      authors (name),
-      categories (name, slug)
-    `)
-    .eq('status', 'published')
-    .order('published_at', { ascending: false })
-    .limit(5)
-
-  // Get breaking news
-  const { data: breakingNews } = await supabase
-    .from('articles')
-    .select('id, title, slug, categories(slug)')
-    .eq('status', 'published')
-    .order('published_at', { ascending: false })
-    .limit(5)
-
-  // Get categories
-  const { data: categories } = await supabase
-    .from('categories')
-    .select('*')
-    .order('name') // show all categories alphabetically
+    articles = articlesRes.data || []
+    trendingArticles = trendingRes.data || []
+    breakingNews = breakingRes.data || []
+    categories = categoriesRes.data || []
+  } catch (error) {
+    console.error('Homepage data fetch failed:', error)
+  }
 
   const featuredArticle = articles?.[0]
 
@@ -246,7 +254,7 @@ export default async function HomePage() {
                   <h3 className="text-xl font-bold mb-4 dark:text-white">Categories</h3>
                   <div className="flex flex-wrap gap-2">
                     {categories?.map(category => (
-                      <Link key={category.id} href={`/category/${category.slug}`}>
+                      <Link key={category.id} href={`/${category.slug}`}>
                         <Badge variant="outline" className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300">
                           {category.name}
                         </Badge>
@@ -262,46 +270,6 @@ export default async function HomePage() {
           </div>
         </div>
 
-        {/* Footer */}
-        <footer className="bg-gray-900 dark:bg-black text-white mt-20">
-          <div className="container mx-auto px-4 py-12">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-              <div>
-                <h3 className="text-xl font-bold mb-4">NewsHarpal</h3>
-                <p className="text-gray-400">Your trusted source for news and insights.</p>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-4">Quick Links</h4>
-                <ul className="space-y-2 text-gray-400">
-                  <li><Link href="/" className="hover:text-white">Home</Link></li>
-                  <li><Link href="/dashboard" className="hover:text-white">Dashboard</Link></li>
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-4">Categories</h4>
-                <ul className="space-y-2 text-gray-400">
-                  {categories?.slice(0, 4).map(category => (
-                    <li key={category.id}>
-                      <Link href={`/category/${category.slug}`} className="hover:text-white">
-                        {category.name}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-4">Legal</h4>
-                <ul className="space-y-2 text-gray-400">
-                  <li><Link href="/privacy" className="hover:text-white">Privacy Policy</Link></li>
-                  <li><Link href="/terms" className="hover:text-white">Terms of Service</Link></li>
-                </ul>
-              </div>
-            </div>
-            <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-              <p>© 2025 NewsHarpal. All rights reserved.</p>
-            </div>
-          </div>
-        </footer>
       </div>
     </>
   )

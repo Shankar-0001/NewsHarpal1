@@ -1,5 +1,6 @@
 import './globals.css'
 import { ThemeProvider } from 'next-themes'
+import SiteFooter from '@/components/layout/SiteFooter'
 
 export const metadata = {
   title: 'NewsHarpal - Latest News and Insights',
@@ -10,7 +11,6 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: 'window.addEventListener("error",function(e){if(e.error instanceof DOMException&&e.error.name==="DataCloneError"&&e.message&&e.message.includes("PerformanceServerTiming")){e.stopImmediatePropagation();e.preventDefault()}},true);' }} />
         {/* AdSense Script */}
         {process.env.NEXT_PUBLIC_ADS_ENABLED === 'true' && (
           <script
@@ -20,9 +20,10 @@ export default function RootLayout({ children }) {
           />
         )}
       </head>
-      <body>
+      <body className="font-sans">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
+          <SiteFooter />
         </ThemeProvider>
       </body>
     </html>

@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { apiResponse, logger } from '@/lib/api-utils'
 import { validateArticle, ValidationError } from '@/lib/validation'
 import { requireAuth, canEditArticle, canDeleteArticle } from '@/lib/auth-utils'
+import { sanitizeRichText } from '@/lib/security-utils'
 
 export async function PATCH(request, { params }) {
     const requestId = `PATCH-article-${params.id}`
@@ -25,13 +26,20 @@ export async function PATCH(request, { params }) {
         }
 
         // 5. Update article
+        const updatePayload = {
+            ...data,
+            content: sanitizeRichText(data.content),
+            updated_at: new Date().toISOString(),
+        }
+
+        if (user.role !== 'admin') {
+            delete updatePayload.author_id
+        }
+
         const supabase = await createClient()
         const { data: updatedArticle, error } = await supabase
             .from('articles')
-            .update({
-                ...data,
-                updated_at: new Date().toISOString(),
-            })
+            .update(updatePayload)
             .eq('id', params.id)
             .select()
             .single()

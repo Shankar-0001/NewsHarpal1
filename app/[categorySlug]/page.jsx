@@ -3,101 +3,143 @@ import { notFound } from 'next/navigation'
 import PublicHeader from '@/components/layout/PublicHeader'
 import ArticleCard from './ArticleCard'
 
-// ISR: refresh category pages every minute
-export const revalidate = 60
+export const revalidate = 120
+export const dynamicParams = true
 
-export const dynamicParams = true // allow on‑demand generation when new categories are added
+const PAGE_SIZE = 12
 
 export async function generateStaticParams() {
-    try {
-        const supabase = await createClient()
-        const { data: categories } = await supabase.from('categories').select('slug')
-        return categories?.map(c => ({ categorySlug: c.slug })) || []
-    } catch (error) {
-        console.error('Error generating static params:', error)
-        return []
-    }
+  try {
+    // generateStaticParams runs outside request scope, so avoid cookie-bound client
+    const { createClient: createPublicClient } = await import('@supabase/supabase-js')
+    const supabase = createPublicClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+    )
+    const { data: categories } = await supabase.from('categories').select('slug')
+    return categories?.map((c) => ({ categorySlug: c.slug })) || []
+  } catch {
+    return []
+  }
 }
 
 export async function generateMetadata({ params }) {
+  try {
     const supabase = await createClient()
     const { data: category } = await supabase
-        .from('categories')
-        .select('name, slug')
-        .eq('slug', params.categorySlug)
-        .single()
+      .from('categories')
+      .select('name, slug')
+      .eq('slug', params.categorySlug)
+      .single()
 
     if (!category) return { title: 'Category not found' }
 
     return {
-        title: `${category.name} – NewsHarpal`,
-        description: `Latest articles in the ${category.name} category.`,
-        openGraph: {
-            title: `${category.name} – NewsHarpal`,
-            description: `Latest articles in the ${category.name} category.`,
-            type: 'website',
-        },
+      title: `${category.name} - NewsHarpal`,
+      description: `Latest articles in ${category.name}.`,
     }
+  } catch {
+    return {
+      title: 'Category - NewsHarpal',
+      description: 'Latest category news.',
+    }
+  }
 }
 
-export default async function CategoryPage({ params }) {
-    const { categorySlug } = params
-    const supabase = await createClient()
+export default async function CategoryPage({ params, searchParams }) {
+  const categorySlug = params.categorySlug
+  const page = Math.max(1, parseInt(searchParams?.page || '1', 10))
+  const from = (page - 1) * PAGE_SIZE
+  const to = from + PAGE_SIZE - 1
 
-    // 1. fetch category record by slug
+  const supabase = await createClient()
+
+  try {
     const { data: category, error: catError } = await supabase
-        .from('categories')
-        .select('id, name, slug')
-        .eq('slug', categorySlug)
-        .single()
+      .from('categories')
+      .select('id, name, slug')
+      .eq('slug', categorySlug)
+      .single()
 
     if (catError || !category) {
-        notFound()
+      notFound()
     }
 
-    // 2. query articles belonging to that category only
-    const { data: articles, error: artError } = await supabase
-        .from('articles')
-        .select(`
-      *,
-      authors (name, slug),
-      categories (name, slug)
-    `)
-        .eq('status', 'published')
-        .eq('category_id', category.id)
-        .order('published_at', { ascending: false })
+    const { data: articles, count } = await supabase
+      .from('articles')
+      .select(
+        `
+        id,
+        title,
+        slug,
+        excerpt,
+        featured_image_url,
+        published_at,
+        categories (name, slug),
+        authors (name, slug)
+      `,
+        { count: 'exact' }
+      )
+      .eq('status', 'published')
+      .eq('category_id', category.id)
+      .order('published_at', { ascending: false })
+      .range(from, to)
 
-    if (artError) {
-        console.error('Error loading articles for category', categorySlug, artError)
-        // we could throw to show 500 page, but for now render empty list
-    }
-
-    // 3. header categories (small subset)
     const { data: allCategories } = await supabase
-        .from('categories')
-        .select('id,name,slug')
-        .order('name') // fetch all categories for header
+      .from('categories')
+      .select('id, name, slug')
+      .order('name')
+
+    const totalPages = Math.max(1, Math.ceil((count || 0) / PAGE_SIZE))
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-            <PublicHeader categories={allCategories || []} />
-            <div className="container mx-auto px-4 py-12">
-                <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-8">
-                    {category.name}
-                </h1>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <PublicHeader categories={allCategories || []} />
+        <div className="container mx-auto px-4 py-12">
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-8">{category.name}</h1>
 
-                {articles && articles.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {articles.map((article) => (
-                            <ArticleCard key={article.id} article={article} />
-                        ))}
-                    </div>
+          {articles && articles.length > 0 ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {articles.map((article) => (
+                  <ArticleCard key={article.id} article={article} />
+                ))}
+              </div>
+
+              <div className="mt-8 flex items-center justify-between text-sm">
+                {page > 1 ? (
+                  <a href={`/${categorySlug}?page=${page - 1}`} className="text-blue-600 hover:underline">
+                    Previous
+                  </a>
                 ) : (
-                    <p className="text-gray-600 dark:text-gray-400">
-                        No articles in this category yet.
-                    </p>
+                  <span className="text-gray-400">Previous</span>
                 )}
-            </div>
+
+                <span className="text-gray-600 dark:text-gray-400">Page {page} of {totalPages}</span>
+
+                {page < totalPages ? (
+                  <a href={`/${categorySlug}?page=${page + 1}`} className="text-blue-600 hover:underline">
+                    Next
+                  </a>
+                ) : (
+                  <span className="text-gray-400">Next</span>
+                )}
+              </div>
+            </>
+          ) : (
+            <p className="text-gray-600 dark:text-gray-400">No articles in this category yet.</p>
+          )}
         </div>
+      </div>
     )
+  } catch (error) {
+    console.error('Category page SSR failed:', error)
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="container mx-auto px-4 py-12">
+          <p className="text-gray-700 dark:text-gray-300">Category is temporarily unavailable. Please try again.</p>
+        </div>
+      </div>
+    )
+  }
 }

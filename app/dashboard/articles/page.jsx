@@ -27,7 +27,7 @@ export default async function ArticlesPage() {
     .from('articles')
     .select(`
       *,
-      authors (id, name),
+      authors (id, name, user_id),
       categories (name)
     `)
     .order('created_at', { ascending: false })
@@ -69,7 +69,7 @@ export default async function ArticlesPage() {
       {articles && articles.length > 0 ? (
         <div className="grid gap-4">
           {articles.map((article) => {
-            const canEdit = isAdmin || article.authors?.id === user.id
+            const canEdit = isAdmin || article.authors?.user_id === user.id
 
             return (
               <Card key={article.id} className="overflow-hidden hover:shadow-md transition-shadow">

@@ -59,14 +59,13 @@ export default function MediaLibraryPage() {
 
       // Add image dimensions if available
       if (file.type.startsWith('image/')) {
-        const img = new Image()
-        img.onload = () => {
-          formData.append('dimensions', JSON.stringify({
-            width: img.width,
-            height: img.height,
-          }))
-        }
-        img.src = URL.createObjectURL(file)
+        const dimensions = await new Promise((resolve, reject) => {
+          const img = new Image()
+          img.onload = () => resolve({ width: img.width, height: img.height })
+          img.onerror = () => reject(new Error('Could not read image dimensions'))
+          img.src = URL.createObjectURL(file)
+        })
+        formData.append('dimensions', JSON.stringify(dimensions))
       }
 
       const response = await fetch('/api/media', {
@@ -82,7 +81,7 @@ export default function MediaLibraryPage() {
       } else {
         toast({
           title: 'Upload failed',
-          description: data.data?.message || 'Unknown error',
+          description: data.error?.message || data.error || 'Unknown error',
           variant: 'destructive',
         })
       }
@@ -133,7 +132,7 @@ export default function MediaLibraryPage() {
       } else {
         toast({
           title: 'Delete failed',
-          description: data.data?.message || 'Unknown error',
+          description: data.error?.message || data.error || 'Unknown error',
           variant: 'destructive',
         })
       }

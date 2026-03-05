@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Moon, Sun, Search, Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,10 +9,15 @@ import { useTheme } from 'next-themes'
 import { useRouter } from 'next/navigation'
 
 export default function PublicHeader({ categories }) {
-  const { theme, setTheme } = useTheme()
+  const { resolvedTheme, setTheme } = useTheme()
   const [searchQuery, setSearchQuery] = useState('')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
   const router = useRouter()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const handleSearch = (e) => {
     e.preventDefault()
@@ -35,6 +40,8 @@ export default function PublicHeader({ categories }) {
           <form onSubmit={handleSearch} className="hidden md:flex items-center max-w-md flex-1 mx-8">
             <div className="relative w-full">
               <Input
+                id="desktop-search"
+                name="q"
                 type="search"
                 placeholder="Search articles..."
                 value={searchQuery}
@@ -58,9 +65,9 @@ export default function PublicHeader({ categories }) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+              onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
             >
-              {theme === 'dark' ? (
+              {mounted && resolvedTheme === 'dark' ? (
                 <Sun className="h-5 w-5" />
               ) : (
                 <Moon className="h-5 w-5" />
@@ -112,6 +119,8 @@ export default function PublicHeader({ categories }) {
             <form onSubmit={handleSearch}>
               <div className="relative">
                 <Input
+                  id="mobile-search"
+                  name="q"
                   type="search"
                   placeholder="Search articles..."
                   value={searchQuery}

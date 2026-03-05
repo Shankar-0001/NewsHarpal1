@@ -3,7 +3,11 @@ import { NextResponse } from 'next/server'
 
 export async function POST(request) {
     try {
-        const { email, password, name, role } = await request.json()
+        const { email, password, name } = await request.json()
+
+        if (!email || !password) {
+            return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
+        }
 
         const supabase = await createClient()
 
@@ -22,10 +26,10 @@ export async function POST(request) {
             return NextResponse.json({ error: 'User creation failed' }, { status: 400 })
         }
 
-        // Update user role
+        // Always assign self-signups as author.
         const { error: updateError } = await supabase
             .from('users')
-            .update({ role: role || 'author' })
+            .update({ role: 'author' })
             .eq('id', userId)
 
         if (updateError) {

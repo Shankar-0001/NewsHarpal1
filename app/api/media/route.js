@@ -14,7 +14,7 @@ import { validateFileUpload, sanitizeFilename } from '@/lib/security-utils'
  */
 export async function GET(request) {
     try {
-        const supabase = createClient()
+        const supabase = await createClient()
         const url = new URL(request.url)
         const page = Math.max(1, parseInt(url.searchParams.get('page') || '1'))
         const limit = Math.min(100, parseInt(url.searchParams.get('limit') || '20'))
@@ -80,7 +80,7 @@ export async function GET(request) {
  */
 export async function POST(request) {
     try {
-        const supabase = createClient()
+        const supabase = await createClient()
 
         // Check authentication
         const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -124,7 +124,7 @@ export async function POST(request) {
         const filePath = `media/${year}/${month}/${day}/${Date.now()}_${sanitized}`
 
         // Upload to Supabase Storage
-        const { data: uploadData, error: uploadError } = await supabase.storage
+        const { error: uploadError } = await supabase.storage
             .from('media')
             .upload(filePath, file, {
                 cacheControl: '3600',
@@ -142,7 +142,6 @@ export async function POST(request) {
         let dimensions = null
         if (file.type.startsWith('image/')) {
             try {
-                const buffer = await file.arrayBuffer()
                 // Note: In production, use a library like 'image-size' on server
                 // For now, store dimensions from client metadata if available
                 const metadata = formData.get('dimensions')
@@ -163,13 +162,6 @@ export async function POST(request) {
                 file_type: file.type,
                 file_size: file.size,
                 uploaded_by: user.id,
-                storage_path: filePath,
-                width: dimensions?.width,
-                height: dimensions?.height,
-                metadata: {
-                    originalName: file.name,
-                    uploadedAt: new Date().toISOString(),
-                },
             })
             .select()
 
@@ -195,7 +187,7 @@ export async function POST(request) {
  */
 export async function DELETE(request) {
     try {
-        const supabase = createClient()
+        const supabase = await createClient()
 
         // Check authentication
         const { data: { user }, error: authError } = await supabase.auth.getUser()
@@ -236,10 +228,12 @@ export async function DELETE(request) {
         }
 
         // Delete from storage
-        if (media.storage_path) {
+        const storagePath = media.storage_path || media.file_path || null
+
+        if (storagePath) {
             const { error: deleteStorageError } = await supabase.storage
                 .from('media')
-                .remove([media.storage_path])
+                .remove([storagePath])
 
             if (deleteStorageError) {
                 console.warn('Storage deletion warning:', deleteStorageError)

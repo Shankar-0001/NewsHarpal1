@@ -2,6 +2,16 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse } from 'next/server'
 
 export async function middleware(request) {
+  const pathname = request.nextUrl.pathname
+
+  // Only touch Supabase auth for routes that need auth decisions.
+  const isProtectedRoute = pathname.startsWith('/dashboard')
+  const isAuthPage = pathname === '/login' || pathname === '/signup'
+
+  if (!isProtectedRoute && !isAuthPage) {
+    return NextResponse.next()
+  }
+
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -31,13 +41,14 @@ export async function middleware(request) {
     }
   )
 
-  const { data: { user } } = await supabase.auth.getUser()
-
-  // Protected routes
-  const protectedPaths = ['/dashboard']
-  const isProtectedRoute = protectedPaths.some(path => 
-    request.nextUrl.pathname.startsWith(path)
-  )
+  let user = null
+  try {
+    const { data } = await supabase.auth.getUser()
+    user = data?.user || null
+  } catch {
+    // Network/auth provider temporary issues should not hard-crash middleware.
+    user = null
+  }
 
   // Redirect unauthenticated users
   if (isProtectedRoute && !user) {
@@ -45,7 +56,7 @@ export async function middleware(request) {
   }
 
   // Redirect authenticated users away from auth pages
-  if ((request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup') && user) {
+  if (isAuthPage && user) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

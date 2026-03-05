@@ -39,8 +39,9 @@ export async function generateMetadata({ params }) {
 }
 
 export default async function ArticlePage({ params }) {
-  const supabase = await createClient()
-  const { slug } = params
+  try {
+    const supabase = await createClient()
+    const { slug } = params
 
   // First try to find by current slug
   let { data: article } = await supabase
@@ -84,14 +85,14 @@ export default async function ArticlePage({ params }) {
     }
   }
 
-  if (!article) {
-    notFound()
-  }
+    if (!article) {
+      notFound()
+    }
 
   // Generate structured data
   const schemaData = generateArticleSchema(article)
 
-  return (
+    return (
     <>
       {/* Structured Data */}
       <Script
@@ -164,7 +165,7 @@ export default async function ArticlePage({ params }) {
 
             {/* Content */}
             <div
-              className="prose prose-lg max-w-none"
+              className="article-content prose prose-lg max-w-none"
               dangerouslySetInnerHTML={{ __html: article.content }}
             />
 
@@ -174,9 +175,11 @@ export default async function ArticlePage({ params }) {
                 <h3 className="text-sm font-semibold text-gray-500 mb-3">TAGS</h3>
                 <div className="flex flex-wrap gap-2">
                   {article.article_tags.map((at) => (
-                    <Badge key={at.tags.slug} variant="outline">
-                      {at.tags.name}
-                    </Badge>
+                    <Link key={at.tags.slug} href={`/tags/${at.tags.slug}`}>
+                      <Badge variant="outline">
+                        {at.tags.name}
+                      </Badge>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -202,5 +205,15 @@ export default async function ArticlePage({ params }) {
         </article>
       </div>
     </>
-  )
+    )
+  } catch (error) {
+    console.error('Legacy article page SSR failed:', error)
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="container mx-auto px-4 py-12">
+          <p className="text-gray-700">Article is temporarily unavailable. Please try again.</p>
+        </div>
+      </div>
+    )
+  }
 }

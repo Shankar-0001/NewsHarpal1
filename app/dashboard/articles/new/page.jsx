@@ -38,6 +38,7 @@ export default function ArticleEditorPage() {
   const [user, setUser] = useState(null)
   const [userRole, setUserRole] = useState(null)
   const [authorId, setAuthorId] = useState(null)
+  const [selectedAuthorId, setSelectedAuthorId] = useState('')
   const [showPreview, setShowPreview] = useState(false)
   const [error, setError] = useState(null)
 
@@ -56,6 +57,8 @@ export default function ArticleEditorPage() {
   // Options
   const [categories, setCategories] = useState([])
   const [tags, setTags] = useState([])
+  const [authors, setAuthors] = useState([])
+  const [newTagName, setNewTagName] = useState('')
 
   useEffect(() => {
     loadUserAndData()
@@ -103,8 +106,21 @@ export default function ArticleEditorPage() {
         supabase.from('tags').select('id, name').order('name'),
       ])
 
+      if (userData.role === 'admin') {
+        const { data: authorsData } = await supabase
+          .from('authors')
+          .select('id, name')
+          .order('name')
+
+        setAuthors(authorsData || [])
+      } else {
+        const ownAuthor = { id: authorData.id, name: user.email?.split('@')[0] || 'Me' }
+        setAuthors([ownAuthor])
+      }
+
       setCategories(categoriesData || [])
       setTags(tagsData || [])
+      setSelectedAuthorId(authorData.id)
       setInitializing(false)
     } catch (err) {
       console.error('Error loading user data:', err)
@@ -251,6 +267,7 @@ export default function ArticleEditorPage() {
         seo_description: seoDescription || excerpt,
         status: newStatus,
         published_at: newStatus === 'published' ? new Date().toISOString() : null,
+        author_id: selectedAuthorId || authorId,
       }
 
       // Call server API to create article
@@ -266,10 +283,10 @@ export default function ArticleEditorPage() {
         throw new Error(result.error || 'Failed to create article')
       }
 
-      const article = result.data
+      const article = result?.data?.article
 
       // Handle tags
-      if (selectedTags.length > 0 && article) {
+      if (selectedTags.length > 0 && article?.id) {
         const tagRelations = selectedTags.map(tagId => ({
           article_id: article.id,
           tag_id: tagId,
@@ -316,6 +333,32 @@ export default function ArticleEditorPage() {
         ? prev.filter(id => id !== tagId)
         : [...prev, tagId]
     )
+  }
+
+  const createTag = async () => {
+    const name = newTagName.trim()
+    if (!name) return
+
+    const newSlug = slugify(name, { lower: true, strict: true })
+    const response = await fetch('/api/articles/tags', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, slug: newSlug }),
+    })
+    const result = await response.json()
+    if (response.ok && result?.data?.tag) {
+      const createdTag = result.data.tag
+      setTags((prev) => [...prev, createdTag])
+      setSelectedTags((prev) => [...prev, createdTag.id])
+      setNewTagName('')
+      return
+    }
+
+    toast({
+      variant: 'destructive',
+      title: 'Tag creation failed',
+      description: result?.error || 'Could not create tag',
+    })
   }
 
   if (initializing) {
@@ -400,7 +443,7 @@ export default function ArticleEditorPage() {
           </CardContent>
         </Card>
 
-        {/* Category and Featured Image */}
+        {/* Category and Author */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <Card>
             <CardHeader>
@@ -425,23 +468,44 @@ export default function ArticleEditorPage() {
 
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg">Featured Image</CardTitle>
+              <CardTitle className="text-lg">Author</CardTitle>
             </CardHeader>
             <CardContent>
-              <Input
-                type="file"
-                accept="image/*"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0]
-                  if (file) {
-                    const url = await handleImageUpload(file)
-                    if (url) setFeaturedImage(url)
-                  }
-                }}
-              />
+              <Select value={selectedAuthorId} onValueChange={setSelectedAuthorId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select author" />
+                </SelectTrigger>
+                <SelectContent>
+                  {authors.map(author => (
+                    <SelectItem key={author.id} value={author.id}>
+                      {author.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </CardContent>
           </Card>
         </div>
+
+        {/* Featured Image */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Featured Image</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Input
+              type="file"
+              accept="image/*"
+              onChange={async (e) => {
+                const file = e.target.files?.[0]
+                if (file) {
+                  const url = await handleImageUpload(file)
+                  if (url) setFeaturedImage(url)
+                }
+              }}
+            />
+          </CardContent>
+        </Card>
 
         {/* Featured Image Preview */}
         {featuredImage && (
@@ -460,6 +524,16 @@ export default function ArticleEditorPage() {
             <CardTitle className="text-lg">Tags</CardTitle>
           </CardHeader>
           <CardContent>
+            <div className="flex gap-2 mb-4">
+              <Input
+                value={newTagName}
+                onChange={(e) => setNewTagName(e.target.value)}
+                placeholder="Create new tag"
+              />
+              <Button type="button" variant="outline" onClick={createTag}>
+                Add
+              </Button>
+            </div>
             <div className="flex flex-wrap gap-2">
               {tags.length > 0 ? (
                 tags.map(tag => (

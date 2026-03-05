@@ -7,10 +7,12 @@ import { Calendar } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import Image from 'next/image'
+import PublicHeader from '@/components/layout/PublicHeader'
 
 export default async function AuthorProfilePage({ params }) {
-    const supabase = await createClient()
-    const { slug } = params
+    try {
+        const supabase = await createClient()
+        const { slug } = params
 
     // Get author by slug or id
     const { data: author, error: authorError } = await supabase
@@ -19,9 +21,9 @@ export default async function AuthorProfilePage({ params }) {
         .or(`slug.eq.${slug},id.eq.${slug}`)
         .single()
 
-    if (authorError || !author) {
-        notFound()
-    }
+        if (authorError || !author) {
+            notFound()
+        }
 
     // Get all articles by this author
     const { data: articles } = await supabase
@@ -35,9 +37,15 @@ export default async function AuthorProfilePage({ params }) {
         .eq('status', 'published')
         .order('published_at', { ascending: false })
 
-    return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12">
-            <div className="container mx-auto px-4 max-w-4xl">
+    const { data: categories } = await supabase
+        .from('categories')
+        .select('id, name, slug')
+        .order('name')
+
+        return (
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+                <PublicHeader categories={categories || []} />
+                <div className="container mx-auto px-4 max-w-4xl py-12">
                 {/* Author Header */}
                 <Card className="mb-8 dark:bg-gray-800 dark:border-gray-700">
                     <CardHeader className="text-center py-12">
@@ -153,7 +161,17 @@ export default async function AuthorProfilePage({ params }) {
                         </Card>
                     )}
                 </div>
+                </div>
             </div>
-        </div>
-    )
+        )
+    } catch (error) {
+        console.error('Author page SSR failed:', error)
+        return (
+            <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+                <div className="container mx-auto px-4 py-12">
+                    <p className="text-gray-700 dark:text-gray-300">Author profile is temporarily unavailable.</p>
+                </div>
+            </div>
+        )
+    }
 }

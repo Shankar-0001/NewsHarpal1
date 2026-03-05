@@ -28,14 +28,14 @@ export default async function sitemap() {
   })) || []
 
   const categoryEntries = categories?.map((category) => ({
-    url: `${siteUrl}/category/${category.slug}`,
+    url: `${siteUrl}/${category.slug}`,
     lastModified: new Date(category.updated_at),
     changeFrequency: 'daily',
     priority: 0.7,
   })) || []
 
   const tagEntries = tags?.map((tag) => ({
-    url: `${siteUrl}/tag/${tag.slug}`,
+    url: `${siteUrl}/tags/${tag.slug}`,
     lastModified: new Date(tag.updated_at),
     changeFrequency: 'weekly',
     priority: 0.5,

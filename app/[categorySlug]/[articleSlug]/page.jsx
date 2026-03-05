@@ -40,72 +40,79 @@ export async function generateStaticParams() {
 
 // Generate metadata for SEO
 export async function generateMetadata({ params }) {
-  const supabase = await createClient()
-  const { categorySlug, articleSlug } = params
+  try {
+    const supabase = await createClient()
+    const { articleSlug } = params
 
-  const { data: article } = await supabase
-    .from('articles')
-    .select(`
-      *,
-      authors (name, slug),
-      categories (name, slug)
-    `)
-    .eq('slug', articleSlug)
-    .eq('status', 'published')
-    .single()
+    const { data: article } = await supabase
+      .from('articles')
+      .select(`
+        *,
+        authors (name, slug),
+        categories (name, slug)
+      `)
+      .eq('slug', articleSlug)
+      .eq('status', 'published')
+      .single()
 
-  if (!article) {
-    return {
-      title: 'Article Not Found',
+    if (!article) {
+      return {
+        title: 'Article Not Found',
+      }
     }
-  }
 
-  const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://newsharpal.com'
-  const articleUrl = `${siteUrl}/${article.categories?.slug || 'news'}/${article.slug}`
+    const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://newsharpal.com'
+    const articleUrl = `${siteUrl}/${article.categories?.slug || 'news'}/${article.slug}`
 
-  return {
-    title: article.seo_title || article.title,
-    description: article.seo_description || article.excerpt,
-    keywords: article.article_tags?.map(t => t.tags?.name).filter(Boolean).join(', '),
-    authors: article.authors ? [{ name: article.authors.name, url: `${siteUrl}/author/${article.authors.slug}` }] : [],
-    openGraph: {
+    return {
       title: article.seo_title || article.title,
       description: article.seo_description || article.excerpt,
-      type: 'article',
-      publishedTime: article.published_at,
-      modifiedTime: article.updated_at,
-      authors: article.authors?.name ? [article.authors.name] : [],
-      images: article.featured_image_url ? [{
-        url: article.featured_image_url,
-        width: 1200,
-        height: 630,
-        alt: article.title,
-      }] : [],
-      url: articleUrl,
-    },
-    twitter: {
-      card: 'summary_large_image',
-      title: article.seo_title || article.title,
-      description: article.seo_description || article.excerpt,
-      images: article.featured_image_url ? [article.featured_image_url] : [],
-    },
-    alternates: {
-      canonical: articleUrl,
-    },
-    robots: {
-      index: true,
-      follow: true,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
-      'max-video-preview': -1,
-    },
+      keywords: article.article_tags?.map(t => t.tags?.name).filter(Boolean).join(', '),
+      authors: article.authors ? [{ name: article.authors.name, url: `${siteUrl}/authors/${article.authors.slug}` }] : [],
+      openGraph: {
+        title: article.seo_title || article.title,
+        description: article.seo_description || article.excerpt,
+        type: 'article',
+        publishedTime: article.published_at,
+        modifiedTime: article.updated_at,
+        authors: article.authors?.name ? [article.authors.name] : [],
+        images: article.featured_image_url ? [{
+          url: article.featured_image_url,
+          width: 1200,
+          height: 630,
+          alt: article.title,
+        }] : [],
+        url: articleUrl,
+      },
+      twitter: {
+        card: 'summary_large_image',
+        title: article.seo_title || article.title,
+        description: article.seo_description || article.excerpt,
+        images: article.featured_image_url ? [article.featured_image_url] : [],
+      },
+      alternates: {
+        canonical: articleUrl,
+      },
+      robots: {
+        index: true,
+        follow: true,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+        'max-video-preview': -1,
+      },
+    }
+  } catch {
+    return {
+      title: 'Article - NewsHarpal',
+    }
   }
 }
 
 export default async function ArticlePage({ params }) {
-  const supabase = await createClient()
-  const { categorySlug, articleSlug } = params
-  const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://publish-pro-20.preview.emergentagent.com'
+  try {
+    const supabase = await createClient()
+    const { categorySlug, articleSlug } = params
+    const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://publish-pro-20.preview.emergentagent.com'
 
   // Fetch article
   const { data: article } = await supabase
@@ -121,6 +128,10 @@ export default async function ArticlePage({ params }) {
     .single()
 
   if (!article) {
+    notFound()
+  }
+
+  if (article.categories?.slug && article.categories.slug !== categorySlug) {
     notFound()
   }
 
@@ -157,7 +168,7 @@ export default async function ArticlePage({ params }) {
     category: article.categories?.name,
   })
 
-  return (
+    return (
     <>
       <StructuredData data={newsArticleSchema} />
 
@@ -231,7 +242,7 @@ export default async function ArticlePage({ params }) {
 
             {/* Article Content */}
             <div
-              className="prose prose-lg dark:prose-invert max-w-none mb-8"
+              className="article-content prose prose-lg dark:prose-invert max-w-none mb-8"
               dangerouslySetInnerHTML={{ __html: article.content }}
             />
 
@@ -244,7 +255,7 @@ export default async function ArticlePage({ params }) {
                 <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase">Tagged</h3>
                 <div className="flex flex-wrap gap-2">
                   {article.article_tags.map((at) => (
-                    <Link key={at.tags.slug} href={`/tag/${at.tags.slug}`}>
+                    <Link key={at.tags.slug} href={`/tags/${at.tags.slug}`}>
                       <Badge variant="outline" className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
                         {at.tags.name}
                       </Badge>
@@ -317,5 +328,15 @@ export default async function ArticlePage({ params }) {
         <MobileStickyAd />
       </div>
     </>
-  )
+    )
+  } catch (error) {
+    console.error('Article page SSR failed:', error)
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="container mx-auto px-4 py-12">
+          <p className="text-gray-700 dark:text-gray-300">Article is temporarily unavailable. Please try again.</p>
+        </div>
+      </div>
+    )
+  }
 }
