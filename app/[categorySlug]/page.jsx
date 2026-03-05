@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import PublicHeader from '@/components/layout/PublicHeader'
 import ArticleCard from './ArticleCard'
+import { InArticleAd } from '@/components/ads/AdComponent'
 
 export const revalidate = 120
 export const dynamicParams = true
@@ -101,8 +102,15 @@ export default async function CategoryPage({ params, searchParams }) {
           {articles && articles.length > 0 ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {articles.map((article) => (
-                  <ArticleCard key={article.id} article={article} />
+                {articles.map((article, idx) => (
+                  <div key={article.id} className="contents">
+                    <ArticleCard article={article} />
+                    {(idx + 1) % 4 === 0 && (
+                      <div className="md:col-span-2 rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+                        <InArticleAd />
+                      </div>
+                    )}
+                  </div>
                 ))}
               </div>
 

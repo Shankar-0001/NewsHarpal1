@@ -36,7 +36,7 @@ Published Articles: 10
 
 ### ✅ STEP 2: Verify Homepage (30 seconds)
 
-1. Visit your website: https://publish-pro-20.preview.emergentagent.com
+1. Visit your website: https://newsharpal.com
 2. You should see **10 articles** on the homepage
 3. Click on any article to read it
 4. Everything should work!
@@ -45,7 +45,7 @@ Published Articles: 10
 
 ### 🔐 STEP 3: Create Your Admin Account (1 minute)
 
-1. Go to: https://publish-pro-20.preview.emergentagent.com/signup
+1. Go to: https://newsharpal.com/signup
 2. Fill in:
    - **Email**: your-email@example.com
    - **Password**: Your secure password (min 6 chars)

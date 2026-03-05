@@ -61,14 +61,14 @@ Click **Run** ✅
 
 After completing all 3 steps:
 
-1. **Visit Homepage**: https://publish-pro-20.preview.emergentagent.com
+1. **Visit Homepage**: https://newsharpal.com
    - You should see 10 news articles
 
-2. **Login**: https://publish-pro-20.preview.emergentagent.com/login
+2. **Login**: https://newsharpal.com/login
    - Email: `admin@newsharpal.com`
    - Password: `Admin@123456`
 
-3. **Dashboard**: https://publish-pro-20.preview.emergentagent.com/dashboard
+3. **Dashboard**: https://newsharpal.com/dashboard
    - You should see all articles, categories, authors
 
 ---
@@ -144,3 +144,4 @@ Run this in Supabase SQL Editor:
 ```sql
 ALTER TABLE auth.users DISABLE TRIGGER ALL;
 ```
+

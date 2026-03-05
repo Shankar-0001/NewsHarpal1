@@ -5,12 +5,17 @@ import { createClient } from '@/lib/supabase/client'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import { Plus, Edit, Trash2 } from 'lucide-react'
 import Link from 'next/link'
 
 export default function AuthorsPage() {
   const [authors, setAuthors] = useState([])
   const [loading, setLoading] = useState(true)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [inviteName, setInviteName] = useState('')
+  const [inviteLoading, setInviteLoading] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -54,6 +59,34 @@ export default function AuthorsPage() {
     }
   }
 
+  const inviteAuthor = async (e) => {
+    e.preventDefault()
+    if (!inviteEmail.trim()) return
+    setInviteLoading(true)
+    try {
+      const response = await fetch('/api/admin/invite-author', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: inviteEmail.trim(),
+          name: inviteName.trim(),
+        }),
+      })
+
+      const result = await response.json()
+      if (!response.ok) throw new Error(result?.error || 'Failed to invite author')
+
+      alert(result?.data?.existing ? 'Existing user converted/confirmed as author.' : 'Author invite sent successfully.')
+      setInviteEmail('')
+      setInviteName('')
+      loadAuthors()
+    } catch (error) {
+      alert(error.message || 'Failed to invite author')
+    } finally {
+      setInviteLoading(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="p-8">
@@ -76,6 +109,43 @@ export default function AuthorsPage() {
           </Button>
         </Link>
       </div>
+
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle>Invite Author</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={inviteAuthor} className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            <div className="md:col-span-1">
+              <Label htmlFor="invite_name">Name</Label>
+              <Input
+                id="invite_name"
+                name="invite_name"
+                value={inviteName}
+                onChange={(e) => setInviteName(e.target.value)}
+                placeholder="Author name"
+              />
+            </div>
+            <div className="md:col-span-2">
+              <Label htmlFor="invite_email">Email</Label>
+              <Input
+                id="invite_email"
+                name="invite_email"
+                type="email"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                placeholder="author@example.com"
+                required
+              />
+            </div>
+            <div className="md:col-span-1 flex items-end">
+              <Button type="submit" className="w-full" disabled={inviteLoading}>
+                {inviteLoading ? 'Sending...' : 'Send Invite'}
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
 
       {authors.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">

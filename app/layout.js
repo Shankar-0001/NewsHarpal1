@@ -11,6 +11,7 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <meta name="robots" content="max-image-preview:large" />
         {/* AdSense Script */}
         {process.env.NEXT_PUBLIC_ADS_ENABLED === 'true' && (
           <script

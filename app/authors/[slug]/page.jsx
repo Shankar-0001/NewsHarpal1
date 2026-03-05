@@ -129,6 +129,7 @@ export default async function AuthorProfilePage({ params }) {
                                                     alt={article.title}
                                                     fill
                                                     className="object-cover"
+                                                    sizes="(max-width: 768px) 100vw, 50vw"
                                                 />
                                             </div>
                                         )}

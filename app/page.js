@@ -5,11 +5,14 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Calendar, User, TrendingUp } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
-import { HeaderAd } from '@/components/ads/AdComponent'
+import { HeaderAd, InArticleAd } from '@/components/ads/AdComponent'
 import StructuredData, { OrganizationSchema, WebSiteSchema } from '@/components/seo/StructuredData'
 import PublicHeader from '@/components/layout/PublicHeader'
 import BreakingNewsTicker from '@/components/common/BreakingNewsTicker'
 import Image from 'next/image'
+import { calculateReadingTime } from '@/lib/content-utils'
+import ArticleMiniCard from '@/components/content/ArticleMiniCard'
+import WebStoryCard from '@/components/content/WebStoryCard'
 
 // Revalidate homepage every 10 minutes (ISR)
 export const revalidate = 600
@@ -30,9 +33,11 @@ export default async function HomePage() {
   let trendingArticles = []
   let breakingNews = []
   let categories = []
+  let engagement = []
+  let webStories = []
 
   try {
-    const [articlesRes, trendingRes, breakingRes, categoriesRes] = await Promise.all([
+    const [articlesRes, trendingRes, breakingRes, categoriesRes, engagementRes, storiesRes] = await Promise.all([
       supabase
         .from('articles')
         .select(`
@@ -63,24 +68,57 @@ export default async function HomePage() {
         .from('categories')
         .select('*')
         .order('name'),
+      supabase
+        .from('article_engagement')
+        .select('article_id, views, likes, shares')
+        .limit(200),
+      supabase
+        .from('web_stories')
+        .select('id, title, slug, cover_image, created_at')
+        .order('created_at', { ascending: false })
+        .limit(8),
     ])
 
     articles = articlesRes.data || []
     trendingArticles = trendingRes.data || []
     breakingNews = breakingRes.data || []
     categories = categoriesRes.data || []
+    engagement = engagementRes.data || []
+    webStories = storiesRes.data || []
   } catch (error) {
     console.error('Homepage data fetch failed:', error)
   }
 
   const featuredArticle = articles?.[0]
+  const engagementMap = new Map((engagement || []).map((row) => [row.article_id, row]))
+  const trendingBySignals = [...(articles || [])]
+    .map((article) => {
+      const m = engagementMap.get(article.id) || { views: 0, likes: 0, shares: 0 }
+      return { ...article, _score: (m.views || 0) + (m.likes || 0) * 3 + (m.shares || 0) * 5 }
+    })
+    .sort((a, b) => b._score - a._score)
+    .slice(0, 5)
+  const finalTrending = trendingBySignals.length > 0 ? trendingBySignals : (trendingArticles || []).slice(0, 5)
+  const mostShared = [...(articles || [])]
+    .map((article) => {
+      const m = engagementMap.get(article.id) || { shares: 0 }
+      return { ...article, _shares: m.shares || 0 }
+    })
+    .sort((a, b) => b._shares - a._shares)
+    .slice(0, 6)
+  const categoryBlocks = (categories || [])
+    .slice(0, 4)
+    .map((category) => ({
+      ...category,
+      articles: (articles || []).filter((item) => item.categories?.slug === category.slug).slice(0, 3),
+    }))
 
   return (
     <>
       <StructuredData data={OrganizationSchema()} />
       <StructuredData data={WebSiteSchema()} />
 
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <div className="bg-gray-50 dark:bg-gray-900">
         <PublicHeader categories={categories || []} />
 
         {/* Breaking News Ticker */}
@@ -95,7 +133,7 @@ export default async function HomePage() {
 
         {/* Hero Section with Featured Article */}
         {featuredArticle && (
-          <div className="bg-gradient-to-b from-blue-600 to-blue-800 dark:from-blue-900 dark:to-gray-900 text-white py-12">
+          <div className="bg-gradient-to-b from-blue-600 to-blue-800 dark:from-blue-900 dark:to-gray-900 text-white py-12 md:py-16">
             <div className="container mx-auto px-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                 <div>
@@ -138,6 +176,7 @@ export default async function HomePage() {
                       fill
                       className="object-cover"
                       priority
+                      sizes="(max-width: 1024px) 100vw, 50vw"
                     />
                   </div>
                 )}
@@ -147,7 +186,7 @@ export default async function HomePage() {
         )}
 
         {/* Main Content */}
-        <div className="container mx-auto px-4 py-12">
+        <div className="container mx-auto px-4 py-12 md:py-16">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Articles Column */}
             <div className="lg:col-span-2">
@@ -157,51 +196,59 @@ export default async function HomePage() {
 
               {articles && articles.length > 0 ? (
                 <div className="space-y-6">
-                  {articles.slice(1).map((article) => (
-                    <Link
-                      key={article.id}
-                      href={`/${article.categories?.slug || 'news'}/${article.slug}`}
-                    >
-                      <Card className="hover:shadow-lg transition-shadow cursor-pointer dark:bg-gray-800 dark:border-gray-700">
-                        <div className="flex flex-col md:flex-row">
-                          {article.featured_image_url && (
-                            <div className="relative w-full md:w-64 h-48 md:h-auto">
-                              <Image
-                                src={article.featured_image_url}
-                                alt={article.title}
-                                fill
-                                className="object-cover rounded-t-lg md:rounded-l-lg md:rounded-t-none"
-                              />
-                            </div>
-                          )}
-                          <CardContent className="flex-1 p-6">
-                            <div className="flex items-center gap-2 mb-3">
-                              {article.categories && (
-                                <Badge variant="secondary" className="dark:bg-gray-700">
-                                  {article.categories.name}
-                                </Badge>
-                              )}
-                            </div>
-                            <h3 className="text-xl font-bold mb-2 dark:text-white">{article.title}</h3>
-                            <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
-                              {article.excerpt}
-                            </p>
-                            <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4" />
-                                <span>{article.authors?.name}</span>
+                  {articles.slice(1).map((article, idx) => (
+                    <div key={article.id}>
+                      <Link href={`/${article.categories?.slug || 'news'}/${article.slug}`}>
+                        <Card className="hover:shadow-lg transition-shadow cursor-pointer dark:bg-gray-800 dark:border-gray-700">
+                          <div className="flex flex-col md:flex-row">
+                            {article.featured_image_url && (
+                              <div className="relative w-full md:w-64 h-48 md:h-auto">
+                                <Image
+                                  src={article.featured_image_url}
+                                  alt={article.title}
+                                  fill
+                                  className="object-cover rounded-t-lg md:rounded-l-lg md:rounded-t-none"
+                                  sizes="(max-width: 768px) 100vw, 256px"
+                                />
                               </div>
-                              <div className="flex items-center gap-2">
-                                <Calendar className="h-4 w-4" />
-                                <span>
-                                  {formatDistanceToNow(new Date(article.published_at), { addSuffix: true })}
-                                </span>
+                            )}
+                            <CardContent className="flex-1 p-6">
+                              <div className="flex items-center gap-2 mb-3">
+                                {article.categories && (
+                                  <Badge variant="secondary" className="dark:bg-gray-700">
+                                    {article.categories.name}
+                                  </Badge>
+                                )}
                               </div>
-                            </div>
-                          </CardContent>
+                              <h3 className="text-xl font-bold mb-2 dark:text-white">{article.title}</h3>
+                              <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
+                                {article.excerpt}
+                              </p>
+                              <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
+                                <div className="flex items-center gap-2">
+                                  <User className="h-4 w-4" />
+                                  <span>{article.authors?.name}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="h-4 w-4" />
+                                  <span>
+                                    {formatDistanceToNow(new Date(article.published_at), { addSuffix: true })}
+                                  </span>
+                                </div>
+                              </div>
+                              <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                {calculateReadingTime(article.content || article.excerpt || '')} min read
+                              </p>
+                            </CardContent>
+                          </div>
+                        </Card>
+                      </Link>
+                      {(idx + 1) % 4 === 0 && (
+                        <div className="rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+                          <InArticleAd />
                         </div>
-                      </Card>
-                    </Link>
+                      )}
+                    </div>
                   ))}
                 </div>
               ) : (
@@ -222,26 +269,21 @@ export default async function HomePage() {
                     <TrendingUp className="h-5 w-5 text-orange-500" />
                     <h3 className="text-xl font-bold dark:text-white">Trending Now</h3>
                   </div>
-                  <div className="space-y-4">
-                    {trendingArticles?.slice(0, 5).map((article, index) => (
-                      <Link
-                        key={article.id}
-                        href={`/${article.categories?.slug || 'news'}/${article.slug}`}
-                        className="block group"
-                      >
-                        <div className="flex gap-3">
-                          <span className="text-2xl font-bold text-gray-300 dark:text-gray-600">
-                            {(index + 1).toString().padStart(2, '0')}
-                          </span>
-                          <div>
-                            <h4 className="font-semibold text-sm group-hover:text-blue-600 dark:text-gray-200 dark:group-hover:text-blue-400 line-clamp-2">
-                              {article.title}
-                            </h4>
-                            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                              {formatDistanceToNow(new Date(article.published_at), { addSuffix: true })}
-                            </p>
-                          </div>
-                        </div>
+                  <div className="grid grid-cols-1 gap-4">
+                    {finalTrending.map((article) => (
+                      <ArticleMiniCard key={article.id} article={article} compact />
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="mb-6 dark:bg-gray-800 dark:border-gray-700">
+                <CardContent className="p-6">
+                  <h3 className="text-xl font-bold mb-4 dark:text-white">Most Shared</h3>
+                  <div className="space-y-3">
+                    {mostShared.map((article) => (
+                      <Link key={article.id} href={`/${article.categories?.slug || 'news'}/${article.slug}`} className="block hover:underline text-blue-600 dark:text-blue-400">
+                        {article.title}
                       </Link>
                     ))}
                   </div>
@@ -268,6 +310,47 @@ export default async function HomePage() {
               {/* <SidebarAd /> */}
             </div>
           </div>
+
+          {categoryBlocks.length > 0 && (
+            <section className="mt-12 md:mt-14">
+              <h2 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">Category Blocks</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {categoryBlocks.map((block) => (
+                  <Card key={block.id} className="dark:bg-gray-800 dark:border-gray-700">
+                    <CardContent className="p-6">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-xl font-semibold dark:text-white">{block.name}</h3>
+                        <Link href={`/category/${block.slug}`} className="text-blue-600 dark:text-blue-400 text-sm hover:underline">View Hub</Link>
+                      </div>
+                      <div className="space-y-3">
+                        {block.articles.length > 0 ? block.articles.map((item) => (
+                          <Link key={item.id} href={`/${item.categories?.slug || 'news'}/${item.slug}`} className="block text-gray-800 dark:text-gray-200 hover:text-blue-600 dark:hover:text-blue-400">
+                            {item.title}
+                          </Link>
+                        )) : <p className="text-sm text-gray-500 dark:text-gray-400">No recent stories.</p>}
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {webStories.length > 0 && (
+            <section className="mt-12 md:mt-14">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-bold text-gray-900 dark:text-white">Top Web Stories</h2>
+                <Link href="/web-stories" className="text-blue-600 dark:text-blue-400 hover:underline">View all</Link>
+              </div>
+              <div className="flex gap-4 overflow-x-auto pb-2">
+                {webStories.slice(0, 5).map((story) => (
+                  <div key={story.id} className="min-w-[180px] max-w-[180px]">
+                    <WebStoryCard story={story} />
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </div>
 
       </div>

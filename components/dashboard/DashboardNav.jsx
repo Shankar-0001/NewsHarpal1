@@ -14,6 +14,7 @@ import {
   Image,
   LogOut,
   Newspaper,
+  Clapperboard,
   Menu,
   X,
   ChevronRight,
@@ -65,6 +66,11 @@ export default function DashboardNav({ user, userRole }) {
       title: 'Media',
       href: '/dashboard/media',
       icon: Image,
+    },
+    {
+      title: 'Web Stories',
+      href: '/dashboard/web-stories',
+      icon: Clapperboard,
     },
   ]
 
@@ -141,20 +147,18 @@ export default function DashboardNav({ user, userRole }) {
             </Button>
           </Link>
 
-          <button className="w-full">
-            <Button
-              variant="ghost"
-              className="w-full justify-start text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
-              onClick={(e) => {
-                e.preventDefault()
-              }}
-            >
-              <div className="flex-1 text-left">
-                <div className="text-sm font-medium">{user?.email?.split('@')[0]}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">{user?.email}</div>
-              </div>
-            </Button>
-          </button>
+          <Button
+            variant="ghost"
+            className="w-full justify-start text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
+            onClick={(e) => {
+              e.preventDefault()
+            }}
+          >
+            <div className="flex-1 text-left">
+              <div className="text-sm font-medium">{user?.email?.split('@')[0]}</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">{user?.email}</div>
+            </div>
+          </Button>
 
           <Button
             variant="outline"

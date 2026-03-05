@@ -13,10 +13,13 @@ export default function PublicHeader({ categories }) {
   const [searchQuery, setSearchQuery] = useState('')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [now, setNow] = useState(new Date())
   const router = useRouter()
 
   useEffect(() => {
     setMounted(true)
+    const timer = setInterval(() => setNow(new Date()), 60000)
+    return () => clearInterval(timer)
   }, [])
 
   const handleSearch = (e) => {
@@ -61,6 +64,16 @@ export default function PublicHeader({ categories }) {
 
           {/* Actions */}
           <div className="flex items-center space-x-4">
+            {mounted && (
+              <div className="hidden xl:block text-right leading-tight">
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }).format(now)}
+                </p>
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  {new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit' }).format(now)}
+                </p>
+              </div>
+            )}
             {/* Dark Mode Toggle */}
             <Button
               variant="ghost"
@@ -110,6 +123,9 @@ export default function PublicHeader({ categories }) {
               {category.name}
             </Link>
           ))}
+          <Link href="/web-stories" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
+            Web Stories
+          </Link>
         </nav>
 
         {/* Mobile Menu */}
@@ -157,6 +173,13 @@ export default function PublicHeader({ categories }) {
                   {category.name}
                 </Link>
               ))}
+              <Link
+                href="/web-stories"
+                className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 py-2"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Web Stories
+              </Link>
               <Link
                 href="/dashboard"
                 className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 py-2 border-t dark:border-gray-700 mt-2 pt-4"

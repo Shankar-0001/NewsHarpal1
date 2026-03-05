@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { Calendar } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import PublicHeader from '@/components/layout/PublicHeader'
+import { InArticleAd } from '@/components/ads/AdComponent'
 
 export const revalidate = 300
 
@@ -59,21 +60,28 @@ export default async function TagPage({ params }) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {articles.map((article) => (
-            <Link key={article.id} href={`/${article.categories?.slug || 'news'}/${article.slug}`}>
-              <Card className="p-5 h-full hover:shadow-md transition-shadow dark:bg-gray-800 dark:border-gray-700">
-                <h2 className="font-semibold text-lg text-gray-900 dark:text-white mb-2 line-clamp-2">
-                  {article.title}
-                </h2>
-                <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-3">
-                  {article.excerpt || 'No excerpt available.'}
-                </p>
-                <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
-                  <Calendar className="h-3.5 w-3.5" />
-                  <span>{formatDistanceToNow(new Date(article.published_at), { addSuffix: true })}</span>
+          {articles.map((article, idx) => (
+            <div key={article.id} className="contents">
+              <Link href={`/${article.categories?.slug || 'news'}/${article.slug}`}>
+                <Card className="p-5 h-full hover:shadow-md transition-shadow dark:bg-gray-800 dark:border-gray-700">
+                  <h2 className="font-semibold text-lg text-gray-900 dark:text-white mb-2 line-clamp-2">
+                    {article.title}
+                  </h2>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 line-clamp-2 mb-3">
+                    {article.excerpt || 'No excerpt available.'}
+                  </p>
+                  <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-2">
+                    <Calendar className="h-3.5 w-3.5" />
+                    <span>{formatDistanceToNow(new Date(article.published_at), { addSuffix: true })}</span>
+                  </div>
+                </Card>
+              </Link>
+              {(idx + 1) % 4 === 0 && (
+                <div className="md:col-span-2 rounded-lg border dark:border-gray-700 bg-white dark:bg-gray-800 p-4">
+                  <InArticleAd />
                 </div>
-              </Card>
-            </Link>
+              )}
+            </div>
           ))}
         </div>
       </main>

@@ -6,14 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import Link from 'next/link'
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
-  const [role, setRole] = useState('author')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
@@ -30,7 +28,7 @@ export default function SignupPage() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ email, password, name, role }),
+        body: JSON.stringify({ email, password, name }),
       })
 
       const data = await response.json()
@@ -107,18 +105,6 @@ export default function SignupPage() {
                 className="dark:bg-gray-700 dark:text-white dark:border-gray-600"
               />
               <p className="text-xs text-gray-500 dark:text-gray-400">Minimum 6 characters</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="role" className="dark:text-gray-200">Role</Label>
-              <Select value={role} onValueChange={setRole}>
-                <SelectTrigger className="dark:bg-gray-700 dark:text-white dark:border-gray-600">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="author">Author</SelectItem>
-                  <SelectItem value="admin">Admin</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">

@@ -1,5 +1,5 @@
 export default function robots() {
-  const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://publish-pro-20.preview.emergentagent.com'
+  const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://newsharpal.com'
 
   return {
     rules: [
@@ -14,6 +14,13 @@ export default function robots() {
         disallow: ['/dashboard/', '/api/'],
       },
     ],
-    sitemap: `${siteUrl}/sitemap.xml`,
+    sitemap: [
+      `${siteUrl}/sitemap.xml`,
+      `${siteUrl}/news-sitemap.xml`,
+      `${siteUrl}/category-sitemap.xml`,
+      `${siteUrl}/topic-sitemap.xml`,
+      `${siteUrl}/web-stories-sitemap.xml`,
+    ],
   }
 }
+

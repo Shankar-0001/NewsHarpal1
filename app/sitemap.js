@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 
 export default async function sitemap() {
   const supabase = await createClient()
-  const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://publish-pro-20.preview.emergentagent.com'
+  const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://newsharpal.com'
 
   // Get all published articles
   const { data: articles } = await supabase
@@ -33,6 +33,12 @@ export default async function sitemap() {
     changeFrequency: 'daily',
     priority: 0.7,
   })) || []
+  const categoryHubEntries = categories?.map((category) => ({
+    url: `${siteUrl}/category/${category.slug}`,
+    lastModified: new Date(category.updated_at),
+    changeFrequency: 'daily',
+    priority: 0.7,
+  })) || []
 
   const tagEntries = tags?.map((tag) => ({
     url: `${siteUrl}/tags/${tag.slug}`,
@@ -48,8 +54,34 @@ export default async function sitemap() {
       changeFrequency: 'daily',
       priority: 1.0,
     },
+    {
+      url: `${siteUrl}/news-sitemap.xml`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.6,
+    },
+    {
+      url: `${siteUrl}/category-sitemap.xml`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.6,
+    },
+    {
+      url: `${siteUrl}/topic-sitemap.xml`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.6,
+    },
+    {
+      url: `${siteUrl}/web-stories-sitemap.xml`,
+      lastModified: new Date(),
+      changeFrequency: 'daily',
+      priority: 0.6,
+    },
     ...articleEntries,
     ...categoryEntries,
+    ...categoryHubEntries,
     ...tagEntries,
   ]
 }
+

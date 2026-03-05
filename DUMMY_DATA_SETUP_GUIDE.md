@@ -15,7 +15,7 @@ This guide will help you populate your News CMS with realistic dummy data includ
 
 First, create user accounts via the signup page:
 
-**Go to**: `https://publish-pro-20.preview.emergentagent.com/signup`
+**Go to**: `https://newsharpal.com/signup`
 
 **Create these accounts**:
 

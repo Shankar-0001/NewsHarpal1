@@ -17,6 +17,7 @@ export default function ArticleCard({ article }) {
                                 alt={article.title}
                                 fill
                                 className="object-cover rounded-t-lg md:rounded-l-lg md:rounded-t-none"
+                                sizes="(max-width: 768px) 100vw, 256px"
                             />
                         </div>
                     )}

@@ -6,8 +6,13 @@ import { Calendar, User, ArrowLeft } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { generateArticleMetadata, generateArticleSchema } from '@/lib/seo-utils'
+import { generateArticleMetadata, generateArticleSchemas } from '@/lib/seo-utils'
 import Script from 'next/script'
+import { calculateReadingTime, generateSixtySecondSummary } from '@/lib/content-utils'
+import ArticleSummary from '@/components/article/ArticleSummary'
+import ArticleEngagementBar from '@/components/article/ArticleEngagementBar'
+import ArticleMiniCard from '@/components/content/ArticleMiniCard'
+import Image from 'next/image'
 
 // Revalidate every 10 minutes (ISR)
 export const revalidate = 600
@@ -89,17 +94,77 @@ export default async function ArticlePage({ params }) {
       notFound()
     }
 
-  // Generate structured data
-  const schemaData = generateArticleSchema(article)
+  const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://newsharpal.com'
+  const articleUrl = `${siteUrl}/articles/${article.slug}`
+  const readingTimeMinutes = calculateReadingTime(article.content || '')
+  const summaryPoints = generateSixtySecondSummary(article)
+
+  const { data: relatedArticles } = await supabase
+    .from('articles')
+    .select('id, title, slug, excerpt, published_at, categories(slug)')
+    .eq('status', 'published')
+    .eq('category_id', article.category_id)
+    .neq('id', article.id)
+    .order('published_at', { ascending: false })
+    .limit(4)
+
+  const { data: engagementRows } = await supabase
+    .from('article_engagement')
+    .select('article_id, views, likes, shares')
+    .limit(100)
+
+  const scoreMap = new Map(
+    (engagementRows || []).map((row) => [
+      row.article_id,
+      (row.views || 0) + (row.likes || 0) * 3 + (row.shares || 0) * 5,
+    ])
+  )
+  const { data: trendingCandidates } = await supabase
+    .from('articles')
+    .select('id, title, slug, excerpt, categories(slug)')
+    .eq('status', 'published')
+    .neq('id', article.id)
+    .order('published_at', { ascending: false })
+    .limit(20)
+
+  const trendingArticles = (trendingCandidates || [])
+    .map((item) => ({ ...item, _score: scoreMap.get(item.id) || 0 }))
+    .sort((a, b) => b._score - a._score)
+    .slice(0, 5)
+
+  const { data: latestArticles } = await supabase
+    .from('articles')
+    .select('id, title, slug, excerpt, categories(slug)')
+    .eq('status', 'published')
+    .neq('id', article.id)
+    .order('published_at', { ascending: false })
+    .limit(6)
+  const schemas = generateArticleSchemas({
+    article,
+    articleUrl,
+    readingTimeMinutes,
+    breadcrumbs: [
+      { name: 'Home', url: siteUrl },
+      { name: article.categories?.name || 'News', url: `${siteUrl}/${article.categories?.slug || 'news'}` },
+      { name: article.title, url: articleUrl },
+    ],
+    faqItems: [
+      { question: 'What is this article about?', answer: article.excerpt || article.title },
+      { question: 'How long does this article take to read?', answer: `About ${readingTimeMinutes} minutes.` },
+    ],
+  })
 
     return (
     <>
       {/* Structured Data */}
       <Script
-        id="article-schema"
+        id="article-news-schema"
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemaData) }}
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.newsArticle) }}
       />
+      <Script id="article-blog-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.blogPosting) }} />
+      <Script id="article-breadcrumb-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.breadcrumbList) }} />
+      <Script id="article-faq-schema" type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(schemas.faqPage) }} />
 
       <div className="min-h-screen bg-gray-50">
         {/* Header */}
@@ -137,21 +202,26 @@ export default async function ArticlePage({ params }) {
                   <span className="hover:text-blue-600 hover:underline cursor-pointer">{article.authors?.name}</span>
                 </Link>
               </div>
-              <div className="flex items-center gap-2 text-gray-600">
-                <Calendar className="h-5 w-5" />
-                <span>
-                  {formatDistanceToNow(new Date(article.published_at), { addSuffix: true })}
-                </span>
-              </div>
+            <div className="flex items-center gap-2 text-gray-600">
+              <Calendar className="h-5 w-5" />
+              <span>
+                {formatDistanceToNow(new Date(article.published_at), { addSuffix: true })}
+              </span>
             </div>
+          </div>
 
+            {/* Featured Image */}
             {/* Featured Image */}
             {article.featured_image_url && (
               <div className="mb-8 rounded-lg overflow-hidden">
-                <img
+                <Image
                   src={article.featured_image_url}
                   alt={article.title}
-                  className="w-full h-auto"
+                  width={1200}
+                  height={675}
+                  className="w-full h-auto object-cover"
+                  priority
+                  sizes="(max-width: 1200px) 100vw, 1200px"
                 />
               </div>
             )}
@@ -164,6 +234,9 @@ export default async function ArticlePage({ params }) {
             )}
 
             {/* Content */}
+            <ArticleSummary points={summaryPoints} />
+            <ArticleEngagementBar articleId={article.id} articleUrl={articleUrl} articleTitle={article.title} />
+            <p className="text-sm text-gray-600 mb-4">{readingTimeMinutes} min read</p>
             <div
               className="article-content prose prose-lg max-w-none"
               dangerouslySetInnerHTML={{ __html: article.content }}
@@ -203,6 +276,39 @@ export default async function ArticlePage({ params }) {
             )}
           </Card>
         </article>
+
+        {relatedArticles && relatedArticles.length > 0 && (
+          <section className="container mx-auto px-4 max-w-4xl pb-8">
+            <h2 className="text-2xl font-bold mb-4">You May Also Like</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {relatedArticles.map((item) => (
+                <ArticleMiniCard key={item.id} article={item} compact />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {trendingArticles && trendingArticles.length > 0 && (
+          <section className="container mx-auto px-4 max-w-4xl pb-12">
+            <h2 className="text-2xl font-bold mb-4">Trending Now</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {trendingArticles.map((item) => (
+                <ArticleMiniCard key={item.id} article={item} compact />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {latestArticles && latestArticles.length > 0 && (
+          <section className="container mx-auto px-4 max-w-4xl pb-12">
+            <h2 className="text-2xl font-bold mb-4">Latest News</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {latestArticles.map((item) => (
+                <ArticleMiniCard key={item.id} article={item} compact />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </>
     )

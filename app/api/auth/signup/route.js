@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
+import { desiredRoleForEmail } from '@/lib/role-utils'
 
 export async function POST(request) {
     try {
@@ -26,26 +27,31 @@ export async function POST(request) {
             return NextResponse.json({ error: 'User creation failed' }, { status: 400 })
         }
 
-        // Always assign self-signups as author.
+        const role = desiredRoleForEmail(email)
+
+        // Assign role server-side only.
         const { error: updateError } = await supabase
             .from('users')
-            .update({ role: 'author' })
+            .update({ role })
             .eq('id', userId)
 
         if (updateError) {
             console.error('Error updating role:', updateError)
         }
 
-        // Create author profile
-        const { error: authorError } = await supabase
-            .from('authors')
-            .insert({
-                user_id: userId,
-                name: name || email.split('@')[0],
-            })
+        // Create author profile for non-admin roles.
+        if (role !== 'admin') {
+            const { error: authorError } = await supabase
+                .from('authors')
+                .insert({
+                    user_id: userId,
+                    name: name || email.split('@')[0],
+                    email,
+                })
 
-        if (authorError) {
-            console.error('Error creating author profile:', authorError)
+            if (authorError) {
+                console.error('Error creating author profile:', authorError)
+            }
         }
 
         return NextResponse.json({

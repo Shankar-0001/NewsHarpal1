@@ -113,7 +113,7 @@ SUPABASE_SERVICE_ROLE_KEY=...
 
 The application is already running on:
 - **Local**: http://localhost:3000
-- **Preview**: https://publish-pro-20.preview.emergentagent.com
+- **Preview**: https://newsharpal.com
 
 ## User Roles
 
