@@ -72,7 +72,7 @@ export default async function CategoryHubPage({ params }) {
       <StructuredData data={jsonLd} />
       <PublicHeader categories={categories || []} />
 
-      <main className="container mx-auto max-w-6xl px-4 py-12 md:py-16">
+      <main className="w-full max-w-6xl mx-auto px-4 py-12 md:py-16">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">{category.name} Authority Hub</h1>
 
         {featured && (

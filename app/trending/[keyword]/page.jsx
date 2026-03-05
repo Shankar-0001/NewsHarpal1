@@ -209,7 +209,7 @@ export default async function TrendingKeywordPage({ params }) {
       <StructuredData data={jsonLd} />
       <PublicHeader categories={categories || []} />
 
-      <main className="container mx-auto max-w-6xl px-4 py-10 md:py-14">
+      <main className="w-full max-w-6xl mx-auto px-4 py-10 md:py-14">
         <section className="mb-10 overflow-hidden rounded-xl border dark:border-gray-700 bg-white dark:bg-gray-800">
           <div className="relative aspect-[16/9] w-full">
             <Image

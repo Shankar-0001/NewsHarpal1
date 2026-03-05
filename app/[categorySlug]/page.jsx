@@ -97,7 +97,7 @@ export default async function CategoryPage({ params, searchParams }) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
         <PublicHeader categories={allCategories || []} />
-        <div className="container mx-auto max-w-6xl px-4 py-12">
+        <div className="w-full max-w-6xl mx-auto px-4 py-12">
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-8">{category.name}</h1>
 
           {articles && articles.length > 0 ? (
@@ -150,7 +150,7 @@ export default async function CategoryPage({ params, searchParams }) {
     console.error('Category page SSR failed:', error)
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="container mx-auto max-w-6xl px-4 py-12">
+        <div className="w-full max-w-6xl mx-auto px-4 py-12">
           <p className="text-gray-700 dark:text-gray-300">Category is temporarily unavailable. Please try again.</p>
         </div>
       </div>

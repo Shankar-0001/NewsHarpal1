@@ -1,6 +1,7 @@
 import './globals.css'
 import { ThemeProvider } from 'next-themes'
 import SiteFooter from '@/components/layout/SiteFooter'
+import Script from 'next/script'
 
 export const metadata = {
   title: 'NewsHarpal - Latest News and Insights',
@@ -18,16 +19,16 @@ export default function RootLayout({ children }) {
     <html lang="en" suppressHydrationWarning>
       <head>
         <meta name="robots" content="max-image-preview:large" />
-        {/* AdSense Script */}
+      </head>
+      <body className="font-sans">
+        {/* Lazy-load third-party ad script to protect initial paint/Core Web Vitals */}
         {adsEnabled && adsenseScriptSrc && (
-          <script
-            async
+          <Script
             src={adsenseScriptSrc}
+            strategy="lazyOnload"
             crossOrigin="anonymous"
           />
         )}
-      </head>
-      <body className="font-sans">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
           {children}
           <SiteFooter />

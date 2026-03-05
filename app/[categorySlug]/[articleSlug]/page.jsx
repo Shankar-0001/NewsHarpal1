@@ -264,7 +264,7 @@ export default async function ArticlePage({ params }) {
         <PublicHeader categories={categories || []} />
 
         {/* Article Content */}
-        <article className="container mx-auto px-4 py-8 max-w-6xl">
+        <article className="w-full max-w-6xl mx-auto px-4 py-8">
           <Breadcrumb items={breadcrumbItems} />
 
           <Card className="p-8 md:p-12 dark:bg-gray-800 dark:border-gray-700">
@@ -451,7 +451,7 @@ export default async function ArticlePage({ params }) {
     console.error('Article page SSR failed:', error)
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="container mx-auto max-w-6xl px-4 py-12">
+        <div className="w-full max-w-6xl mx-auto px-4 py-12">
           <p className="text-gray-700 dark:text-gray-300">Article is temporarily unavailable. Please try again.</p>
         </div>
       </div>

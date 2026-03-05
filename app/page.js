@@ -31,14 +31,12 @@ export default async function HomePage() {
   const supabase = await createClient()
   const adsEnabled = process.env.NEXT_PUBLIC_ADS_ENABLED === 'true'
   let articles = []
-  let trendingArticles = []
-  let breakingNews = []
   let categories = []
   let engagement = []
   let webStories = []
 
   try {
-    const [articlesRes, trendingRes, breakingRes, categoriesRes, engagementRes, storiesRes] = await Promise.all([
+    const [articlesRes, categoriesRes, engagementRes, storiesRes] = await Promise.all([
       supabase
         .from('articles')
         .select(`
@@ -50,39 +48,21 @@ export default async function HomePage() {
         .order('published_at', { ascending: false })
         .limit(12),
       supabase
-        .from('articles')
-        .select(`
-          *,
-          authors (name),
-          categories (name, slug)
-        `)
-        .eq('status', 'published')
-        .order('published_at', { ascending: false })
-        .limit(5),
-      supabase
-        .from('articles')
-        .select('id, title, slug, categories(slug)')
-        .eq('status', 'published')
-        .order('published_at', { ascending: false })
-        .limit(5),
-      supabase
         .from('categories')
         .select('*')
         .order('name'),
       supabase
         .from('article_engagement')
         .select('article_id, views, likes, shares')
-        .limit(200),
+        .limit(150),
       supabase
         .from('web_stories')
         .select('id, title, slug, cover_image, created_at')
         .order('created_at', { ascending: false })
-        .limit(8),
+        .limit(5),
     ])
 
     articles = articlesRes.data || []
-    trendingArticles = trendingRes.data || []
-    breakingNews = breakingRes.data || []
     categories = categoriesRes.data || []
     engagement = engagementRes.data || []
     webStories = storiesRes.data || []
@@ -91,6 +71,14 @@ export default async function HomePage() {
   }
 
   const featuredArticle = articles?.[0]
+  const breakingNews = (articles || [])
+    .slice(0, 5)
+    .map((article) => ({
+      id: article.id,
+      title: article.title,
+      slug: article.slug,
+      categories: { slug: article.categories?.slug || 'news' },
+    }))
   const engagementMap = new Map((engagement || []).map((row) => [row.article_id, row]))
   const trendingBySignals = [...(articles || [])]
     .map((article) => {
@@ -99,7 +87,7 @@ export default async function HomePage() {
     })
     .sort((a, b) => b._score - a._score)
     .slice(0, 5)
-  const finalTrending = trendingBySignals.length > 0 ? trendingBySignals : (trendingArticles || []).slice(0, 5)
+  const finalTrending = trendingBySignals.length > 0 ? trendingBySignals : (articles || []).slice(0, 5)
   const mostShared = [...(articles || [])]
     .map((article) => {
       const m = engagementMap.get(article.id) || { shares: 0 }
@@ -127,15 +115,10 @@ export default async function HomePage() {
           <BreakingNewsTicker news={breakingNews} />
         )}
 
-        {/* Header Ad */}
-        <div className="container mx-auto max-w-6xl px-4 py-4">
-          <HeaderAd />
-        </div>
-
         {/* Hero Section with Featured Article */}
         {featuredArticle && (
           <div className="bg-gradient-to-b from-blue-600 to-blue-800 dark:from-blue-900 dark:to-gray-900 text-white py-12 md:py-16">
-            <div className="container mx-auto max-w-6xl px-4">
+            <div className="w-full max-w-6xl mx-auto px-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
                 <div>
                   {featuredArticle.categories && (
@@ -177,7 +160,7 @@ export default async function HomePage() {
                       fill
                       className="object-cover"
                       priority
-                      sizes="(max-width: 1024px) 100vw, 50vw"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 640px"
                     />
                   </div>
                 )}
@@ -187,7 +170,12 @@ export default async function HomePage() {
         )}
 
         {/* Main Content */}
-        <div className="container mx-auto max-w-6xl px-4 py-12 md:py-16">
+        <div className="w-full max-w-6xl mx-auto px-4 py-12 md:py-16">
+          {/* Header Ad */}
+          <div className="hidden md:block pb-4">
+            <HeaderAd />
+          </div>
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* Main Articles Column */}
             <div className="lg:col-span-2">

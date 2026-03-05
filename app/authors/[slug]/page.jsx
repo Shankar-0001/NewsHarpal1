@@ -45,7 +45,7 @@ export default async function AuthorProfilePage({ params }) {
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
                 <PublicHeader categories={categories || []} />
-                <div className="container mx-auto px-4 max-w-6xl py-12">
+                <div className="w-full max-w-6xl mx-auto px-4 py-12">
                 {/* Author Header */}
                 <Card className="mb-8 dark:bg-gray-800 dark:border-gray-700">
                     <CardHeader className="text-center py-12">

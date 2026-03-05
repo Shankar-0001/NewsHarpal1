@@ -5,10 +5,12 @@ import { useEffect, useState } from 'react'
 import { Moon, Sun, Search, Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { useTheme } from 'next-themes'
 import { useRouter } from 'next/navigation'
 
 export default function PublicHeader({ categories }) {
+  const DESKTOP_VISIBLE_CATEGORY_COUNT = 7
   const { resolvedTheme, setTheme } = useTheme()
   const [searchQuery, setSearchQuery] = useState('')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -29,9 +31,12 @@ export default function PublicHeader({ categories }) {
     }
   }
 
+  const visibleCategories = (categories || []).slice(0, DESKTOP_VISIBLE_CATEGORY_COUNT)
+  const overflowCategories = (categories || []).slice(DESKTOP_VISIBLE_CATEGORY_COUNT)
+
   return (
     <header className="bg-white dark:bg-gray-800 border-b dark:border-gray-700 sticky top-0 z-50 shadow-sm">
-      <div className="container mx-auto px-4">
+      <div className="w-full max-w-6xl mx-auto px-4">
         {/* Top Bar */}
         <div className="flex items-center justify-between py-4">
           {/* Logo */}
@@ -107,25 +112,49 @@ export default function PublicHeader({ categories }) {
         </div>
 
         {/* Navigation */}
-        <nav className="hidden md:flex items-center space-x-6 py-3 border-t dark:border-gray-700">
-          <Link
-            href="/"
-            className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium"
-          >
-            Home
-          </Link>
-          {categories?.map(category => (
+        <nav className="hidden md:flex items-center justify-between py-3 border-t dark:border-gray-700 gap-4">
+          <div className="flex items-center gap-6 min-w-0">
             <Link
-              key={category.id}
-              href={`/${category.slug}`}
-              className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400"
+              href="/"
+              className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 font-medium whitespace-nowrap"
             >
-              {category.name}
+              Home
             </Link>
-          ))}
-          <Link href="/web-stories" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400">
-            Web Stories
-          </Link>
+            {visibleCategories.map(category => (
+              <Link
+                key={category.id}
+                href={`/${category.slug}`}
+                className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 whitespace-nowrap"
+              >
+                {category.name}
+              </Link>
+            ))}
+            <Link href="/web-stories" className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 whitespace-nowrap">
+              Web Stories
+            </Link>
+          </div>
+
+          {overflowCategories.length > 0 && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 shrink-0"
+                  aria-label="More categories"
+                >
+                  <Menu className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                {overflowCategories.map((category) => (
+                  <DropdownMenuItem key={category.id} asChild>
+                    <Link href={`/${category.slug}`}>{category.name}</Link>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
         </nav>
 
         {/* Mobile Menu */}
