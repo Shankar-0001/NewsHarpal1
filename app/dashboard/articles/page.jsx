@@ -28,7 +28,7 @@ export default async function ArticlesPage() {
     .select(`
       *,
       authors (id, name, user_id),
-      categories (name)
+      categories (name, slug)
     `)
     .order('created_at', { ascending: false })
 
@@ -78,7 +78,7 @@ export default async function ArticlesPage() {
                     {/* Content */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-3 mb-2 flex-wrap">
-                        <Link href={`/articles/${article.slug}`} target="_blank">
+                        <Link href={`/${article.categories?.slug || 'news'}/${article.slug}`} target="_blank">
                           <h2 className="text-lg font-semibold text-gray-900 dark:text-white hover:text-blue-600 truncate">
                             {article.title}
                           </h2>
@@ -110,7 +110,7 @@ export default async function ArticlesPage() {
                     {/* Actions */}
                     {canEdit && (
                       <div className="flex items-center gap-2">
-                        <Link href={`/articles/${article.slug}`} target="_blank">
+                        <Link href={`/${article.categories?.slug || 'news'}/${article.slug}`} target="_blank">
                           <Button size="sm" variant="ghost" title="View published">
                             <Eye className="h-4 w-4" />
                           </Button>

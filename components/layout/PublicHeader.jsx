@@ -123,7 +123,7 @@ export default function PublicHeader({ categories }) {
             {visibleCategories.map(category => (
               <Link
                 key={category.id}
-                href={`/${category.slug}`}
+                href={`/category/${category.slug}`}
                 className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 whitespace-nowrap"
               >
                 {category.name}
@@ -149,7 +149,7 @@ export default function PublicHeader({ categories }) {
               <DropdownMenuContent align="end">
                 {overflowCategories.map((category) => (
                   <DropdownMenuItem key={category.id} asChild>
-                    <Link href={`/${category.slug}`}>{category.name}</Link>
+                    <Link href={`/category/${category.slug}`}>{category.name}</Link>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
@@ -195,7 +195,7 @@ export default function PublicHeader({ categories }) {
               {categories?.map(category => (
                 <Link
                   key={category.id}
-                  href={`/${category.slug}`}
+                  href={`/category/${category.slug}`}
                   className="text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 py-2"
                   onClick={() => setMobileMenuOpen(false)}
                 >

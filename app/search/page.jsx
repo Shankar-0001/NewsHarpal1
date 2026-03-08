@@ -17,6 +17,15 @@ export async function generateMetadata({ searchParams }) {
   return {
     title: q ? `Search: ${q} - NewsHarpal` : 'Search - NewsHarpal',
     description: q ? `Search results for "${q}" on NewsHarpal.` : 'Search published news articles on NewsHarpal.',
+    keywords: q ? `${q}, ${q} news search, ${q} latest updates` : 'news search, latest news search',
+    robots: {
+      index: false,
+      follow: true,
+      googleBot: {
+        index: false,
+        follow: true,
+      },
+    },
   }
 }
 
@@ -96,4 +105,3 @@ export default async function SearchPage({ searchParams }) {
     </div>
   )
 }
-

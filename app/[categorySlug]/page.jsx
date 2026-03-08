@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation'
 import PublicHeader from '@/components/layout/PublicHeader'
 import ArticleCard from './ArticleCard'
 import { InArticleAd } from '@/components/ads/AdComponent'
+import { absoluteUrl } from '@/lib/site-config'
 
 export const revalidate = 120
 export const dynamicParams = true
@@ -36,8 +37,15 @@ export async function generateMetadata({ params }) {
     if (!category) return { title: 'Category not found' }
 
     return {
-      title: `${category.name} - NewsHarpal`,
+      title: `${category.name} Latest Articles - NewsHarpal`,
       description: `Latest articles in ${category.name}.`,
+      alternates: {
+        canonical: absoluteUrl(`/category/${category.slug}`),
+      },
+      robots: {
+        index: false,
+        follow: true,
+      },
     }
   } catch {
     return {

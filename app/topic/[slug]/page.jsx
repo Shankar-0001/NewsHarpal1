@@ -4,7 +4,7 @@ import PublicHeader from '@/components/layout/PublicHeader'
 import StructuredData from '@/components/seo/StructuredData'
 import ArticleMiniCard from '@/components/content/ArticleMiniCard'
 import { extractTopicKeywords, matchesKeyword } from '@/lib/topic-utils'
-import { absoluteUrl, SITE_URL, slugFromText } from '@/lib/site-config'
+import { absoluteUrl, buildLanguageAlternates, SITE_URL, slugFromText } from '@/lib/site-config'
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
 
@@ -35,7 +35,8 @@ export async function generateMetadata({ params }) {
   return {
     title: `${keyword} News, Trends and Analysis | NewsHarpal`,
     description: `Latest ${keyword} news, explainers, and trending coverage curated by NewsHarpal.`,
-    alternates: { canonical: url },
+    keywords: `${keyword}, ${keyword} topic, ${keyword} explainers, ${keyword} trends`,
+    alternates: { canonical: url, languages: buildLanguageAlternates(`/topic/${params.slug}`) },
     openGraph: {
       title: `${keyword} News, Trends and Analysis`,
       description: `Latest ${keyword} coverage and internal recommendations.`,

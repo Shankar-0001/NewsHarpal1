@@ -8,6 +8,45 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import Image from 'next/image'
 import PublicHeader from '@/components/layout/PublicHeader'
+import StructuredData from '@/components/seo/StructuredData'
+import { absoluteUrl } from '@/lib/site-config'
+import { getAnchorPropsForHref } from '@/lib/link-policy'
+
+export async function generateMetadata({ params }) {
+    const supabase = await createClient()
+    const { data: author } = await supabase
+        .from('authors')
+        .select('id, slug, name, bio, avatar_url')
+        .or(`slug.eq.${params.slug},id.eq.${params.slug}`)
+        .maybeSingle()
+
+    if (!author) {
+        return { title: 'Author Not Found | NewsHarpal' }
+    }
+
+    const authorSlug = author.slug || author.id
+    const canonical = absoluteUrl(`/authors/${authorSlug}`)
+    const description = author.bio || `Read articles by ${author.name} on NewsHarpal.`
+
+    return {
+        title: `${author.name} | NewsHarpal`,
+        description,
+        alternates: { canonical },
+        openGraph: {
+            type: 'profile',
+            title: `${author.name} | NewsHarpal`,
+            description,
+            url: canonical,
+            images: author.avatar_url ? [{ url: author.avatar_url }] : [],
+        },
+        twitter: {
+            card: 'summary_large_image',
+            title: `${author.name} | NewsHarpal`,
+            description,
+            images: author.avatar_url ? [author.avatar_url] : [],
+        },
+    }
+}
 
 export default async function AuthorProfilePage({ params }) {
     try {
@@ -42,8 +81,29 @@ export default async function AuthorProfilePage({ params }) {
         .select('id, name, slug')
         .order('name')
 
+    const authorCanonicalUrl = absoluteUrl(`/authors/${author.slug || author.id}`)
+    const profileSchema = {
+        '@context': 'https://schema.org',
+        '@type': 'ProfilePage',
+        name: `${author.name} profile`,
+        url: authorCanonicalUrl,
+        mainEntity: {
+            '@type': 'Person',
+            name: author.name,
+            description: author.bio || undefined,
+            image: author.avatar_url || undefined,
+            url: authorCanonicalUrl,
+            sameAs: [
+                author.social_links?.twitter,
+                author.social_links?.linkedin,
+                author.social_links?.website,
+            ].filter(Boolean),
+        },
+    }
+
         return (
             <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+                <StructuredData data={profileSchema} />
                 <PublicHeader categories={categories || []} />
                 <div className="w-full max-w-6xl mx-auto px-4 py-12">
                 {/* Author Header */}
@@ -75,8 +135,7 @@ export default async function AuthorProfilePage({ params }) {
                                     {author.social_links.twitter && (
                                         <a
                                             href={author.social_links.twitter}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
+                                            {...getAnchorPropsForHref(author.social_links.twitter)}
                                             className="text-blue-600 dark:text-blue-400 hover:underline"
                                         >
                                             Twitter
@@ -85,8 +144,7 @@ export default async function AuthorProfilePage({ params }) {
                                     {author.social_links.linkedin && (
                                         <a
                                             href={author.social_links.linkedin}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
+                                            {...getAnchorPropsForHref(author.social_links.linkedin)}
                                             className="text-blue-600 dark:text-blue-400 hover:underline"
                                         >
                                             LinkedIn
@@ -95,8 +153,7 @@ export default async function AuthorProfilePage({ params }) {
                                     {author.social_links.website && (
                                         <a
                                             href={author.social_links.website}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
+                                            {...getAnchorPropsForHref(author.social_links.website)}
                                             className="text-blue-600 dark:text-blue-400 hover:underline"
                                         >
                                             Website

@@ -4,12 +4,6 @@ export default async function sitemap() {
   const supabase = await createClient()
   const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://newsharpal.com'
 
-  // Get all published articles
-  const { data: articles } = await supabase
-    .from('articles')
-    .select('slug, updated_at, categories(slug)')
-    .eq('status', 'published')
-
   // Get all categories
   const { data: categories } = await supabase
     .from('categories')
@@ -20,19 +14,6 @@ export default async function sitemap() {
     .from('tags')
     .select('slug, updated_at')
 
-  const articleEntries = articles?.map((article) => ({
-    url: `${siteUrl}/${article.categories?.slug || 'news'}/${article.slug}`,
-    lastModified: new Date(article.updated_at),
-    changeFrequency: 'daily',
-    priority: 0.8,
-  })) || []
-
-  const categoryEntries = categories?.map((category) => ({
-    url: `${siteUrl}/${category.slug}`,
-    lastModified: new Date(category.updated_at),
-    changeFrequency: 'daily',
-    priority: 0.7,
-  })) || []
   const categoryHubEntries = categories?.map((category) => ({
     url: `${siteUrl}/category/${category.slug}`,
     lastModified: new Date(category.updated_at),
@@ -55,31 +36,23 @@ export default async function sitemap() {
       priority: 1.0,
     },
     {
-      url: `${siteUrl}/news-sitemap.xml`,
+      url: `${siteUrl}/web-stories`,
       lastModified: new Date(),
       changeFrequency: 'daily',
       priority: 0.6,
     },
     {
-      url: `${siteUrl}/category-sitemap.xml`,
+      url: `${siteUrl}/privacy`,
       lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.6,
+      changeFrequency: 'monthly',
+      priority: 0.3,
     },
     {
-      url: `${siteUrl}/topic-sitemap.xml`,
+      url: `${siteUrl}/terms`,
       lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.6,
+      changeFrequency: 'monthly',
+      priority: 0.3,
     },
-    {
-      url: `${siteUrl}/web-stories-sitemap.xml`,
-      lastModified: new Date(),
-      changeFrequency: 'daily',
-      priority: 0.6,
-    },
-    ...articleEntries,
-    ...categoryEntries,
     ...categoryHubEntries,
     ...tagEntries,
   ]

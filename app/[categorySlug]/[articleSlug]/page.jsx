@@ -12,10 +12,13 @@ import Breadcrumb from '@/components/common/Breadcrumb'
 import StructuredData, { NewsArticleSchema } from '@/components/seo/StructuredData'
 import { InArticleAd, MobileStickyAd } from '@/components/ads/AdComponent'
 import { generateArticleSchemas } from '@/lib/seo-utils'
-import { calculateReadingTime, generateSixtySecondSummary } from '@/lib/content-utils'
+import { calculateReadingTime, generateSixtySecondSummary, generateAeoSnapshot } from '@/lib/content-utils'
 import ArticleSummary from '@/components/article/ArticleSummary'
 import ArticleEngagementBar from '@/components/article/ArticleEngagementBar'
 import ArticleMiniCard from '@/components/content/ArticleMiniCard'
+import { applyLinkPolicyToHtml } from '@/lib/link-policy'
+import { buildLanguageAlternates } from '@/lib/site-config'
+import { buildArticleKeywords, keywordsToMetadataValue, keywordsToTopicLinks } from '@/lib/keywords'
 
 // ISR Configuration - Revalidate every 30 minutes
 export const revalidate = 1800
@@ -52,7 +55,8 @@ export async function generateMetadata({ params }) {
       .select(`
         *,
         authors (name, slug),
-        categories (name, slug)
+        categories (name, slug),
+        article_tags (tags (name, slug))
       `)
       .eq('slug', articleSlug)
       .eq('status', 'published')
@@ -66,11 +70,12 @@ export async function generateMetadata({ params }) {
 
     const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://newsharpal.com'
     const articleUrl = `${siteUrl}/${article.categories?.slug || 'news'}/${article.slug}`
+    const keywords = buildArticleKeywords(article)
 
     return {
       title: article.seo_title || article.title,
       description: article.seo_description || article.excerpt,
-      keywords: article.article_tags?.map(t => t.tags?.name).filter(Boolean).join(', '),
+      keywords: keywordsToMetadataValue(keywords),
       authors: article.authors ? [{ name: article.authors.name, url: `${siteUrl}/authors/${article.authors.slug}` }] : [],
       openGraph: {
         title: article.seo_title || article.title,
@@ -95,6 +100,7 @@ export async function generateMetadata({ params }) {
       },
       alternates: {
         canonical: articleUrl,
+        languages: buildLanguageAlternates(`/${article.categories?.slug || 'news'}/${article.slug}`),
       },
       robots: {
         index: true,
@@ -138,30 +144,61 @@ export default async function ArticlePage({ params }) {
     notFound()
   }
 
-  // Related: same category
-  const { data: relatedByCategory } = await supabase
-    .from('articles')
-    .select('id, title, slug, excerpt, featured_image_url, published_at, categories(slug), authors(name)')
-    .eq('category_id', article.category_id)
-    .eq('status', 'published')
-    .neq('id', article.id)
-    .order('published_at', { ascending: false })
-    .limit(4)
-
   // Related: same tags
   const tagIds = (article.article_tags || [])
     .map((at) => at.tags?.id)
     .filter(Boolean)
 
-  let relatedByTag = []
-  if (tagIds.length > 0) {
-    const { data: linkRows } = await supabase
-      .from('article_tags')
-      .select('article_id')
-      .neq('article_id', article.id)
-      .in('tag_id', tagIds)
-      .limit(20)
+  const [
+    { data: relatedByCategory },
+    { data: latestArticles },
+    { data: engagementRows },
+    { data: trendingCandidates },
+    { data: categories },
+    { data: linkRows },
+  ] = await Promise.all([
+    supabase
+      .from('articles')
+      .select('id, title, slug, excerpt, featured_image_url, published_at, categories(slug), authors(name)')
+      .eq('category_id', article.category_id)
+      .eq('status', 'published')
+      .neq('id', article.id)
+      .order('published_at', { ascending: false })
+      .limit(4),
+    supabase
+      .from('articles')
+      .select('id, title, slug, excerpt, featured_image_url, published_at, categories(slug), authors(name)')
+      .eq('status', 'published')
+      .neq('id', article.id)
+      .order('published_at', { ascending: false })
+      .limit(10),
+    supabase
+      .from('article_engagement')
+      .select('article_id, views, likes, shares')
+      .limit(100),
+    supabase
+      .from('articles')
+      .select('id, title, slug, excerpt, featured_image_url, published_at, categories(slug), authors(name)')
+      .eq('status', 'published')
+      .neq('id', article.id)
+      .order('published_at', { ascending: false })
+      .limit(20),
+    supabase
+      .from('categories')
+      .select('*')
+      .order('name'),
+    tagIds.length > 0
+      ? supabase
+        .from('article_tags')
+        .select('article_id')
+        .neq('article_id', article.id)
+        .in('tag_id', tagIds)
+        .limit(20)
+      : Promise.resolve({ data: [] }),
+  ])
 
+  let relatedByTag = []
+  if (tagIds.length > 0 && (linkRows || []).length > 0) {
     const ids = [...new Set((linkRows || []).map((r) => r.article_id).filter(Boolean))]
     if (ids.length > 0) {
       const { data: taggedArticles } = await supabase
@@ -175,27 +212,12 @@ export default async function ArticlePage({ params }) {
     }
   }
 
-  // Related fallback: latest
-  const { data: latestArticles } = await supabase
-    .from('articles')
-    .select('id, title, slug, excerpt, featured_image_url, published_at, categories(slug), authors(name)')
-    .eq('status', 'published')
-    .neq('id', article.id)
-    .order('published_at', { ascending: false })
-    .limit(10)
-
   const relatedMap = new Map()
   ;[...(relatedByCategory || []), ...relatedByTag, ...(latestArticles || [])].forEach((item) => {
     if (!item?.id || item.id === article.id || relatedMap.has(item.id)) return
     relatedMap.set(item.id, item)
   })
   const relatedArticles = Array.from(relatedMap.values()).slice(0, 4)
-
-  // Trending by engagement score: views + likes*3 + shares*5
-  const { data: engagementRows } = await supabase
-    .from('article_engagement')
-    .select('article_id, views, likes, shares')
-    .limit(100)
 
   const scoreMap = new Map(
     (engagementRows || []).map((row) => [
@@ -204,33 +226,26 @@ export default async function ArticlePage({ params }) {
     ])
   )
 
-  const { data: trendingCandidates } = await supabase
-    .from('articles')
-    .select('id, title, slug, excerpt, featured_image_url, published_at, categories(slug), authors(name)')
-    .eq('status', 'published')
-    .neq('id', article.id)
-    .order('published_at', { ascending: false })
-    .limit(20)
-
   const trendingArticles = (trendingCandidates || [])
     .map((item) => ({ ...item, _score: scoreMap.get(item.id) || 0 }))
     .sort((a, b) => b._score - a._score)
     .slice(0, 5)
 
-  // Get categories for header
-  const { data: categories } = await supabase
-    .from('categories')
-    .select('*')
-    .order('name') // pull full category list for header
-
   const articleUrl = `${siteUrl}/${article.categories?.slug || 'news'}/${article.slug}`
   const breadcrumbItems = [
-    { label: article.categories?.name || 'News', href: `/${article.categories?.slug || 'news'}` },
+    { label: article.categories?.name || 'News', href: `/category/${article.categories?.slug || 'news'}` },
     { label: article.title, href: `/${article.categories?.slug || 'news'}/${article.slug}` },
   ]
 
   const readingTimeMinutes = calculateReadingTime(article.content || '')
   const summaryPoints = generateSixtySecondSummary(article)
+  const aeoSnapshot = generateAeoSnapshot(article)
+  const articleKeywords = buildArticleKeywords(article)
+  const keywordTopicLinks = keywordsToTopicLinks(articleKeywords)
+  const safeArticleContent = applyLinkPolicyToHtml(article.content || '', {
+    baseUrl: siteUrl,
+    nofollowExternal: true,
+  })
   const faqItems = [
     {
       question: `What is this article about?`,
@@ -248,7 +263,7 @@ export default async function ArticlePage({ params }) {
     faqItems,
     breadcrumbs: [
       { name: 'Home', url: siteUrl },
-      { name: article.categories?.name || 'News', url: `${siteUrl}/${article.categories?.slug || 'news'}` },
+      { name: article.categories?.name || 'News', url: `${siteUrl}/category/${article.categories?.slug || 'news'}` },
       { name: article.title, url: articleUrl },
     ],
   })
@@ -270,7 +285,7 @@ export default async function ArticlePage({ params }) {
           <Card className="p-8 md:p-12 dark:bg-gray-800 dark:border-gray-700">
             {/* Category Badge */}
             {article.categories && (
-              <Link href={`/${article.categories.slug}`}>
+              <Link href={`/category/${article.categories.slug}`}>
                 <Badge variant="secondary" className="mb-4 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600">
                   {article.categories.name}
                 </Badge>
@@ -330,13 +345,21 @@ export default async function ArticlePage({ params }) {
 
             {/* Article Content */}
             <ArticleSummary points={summaryPoints} />
+            <section className="mb-6 p-5 rounded-xl border bg-amber-50/70 border-amber-100 dark:bg-amber-950/30 dark:border-amber-900/50">
+              <h2 className="text-lg font-bold mb-3 text-amber-900 dark:text-amber-200">Quick Context</h2>
+              <ul className="list-disc pl-5 space-y-1.5 text-sm text-amber-900/90 dark:text-amber-100/90">
+                <li><strong>What changed:</strong> {aeoSnapshot.whatChanged}</li>
+                <li><strong>Why it matters:</strong> {aeoSnapshot.whyItMatters}</li>
+                <li><strong>Key context:</strong> {aeoSnapshot.keyContext}</li>
+              </ul>
+            </section>
             <ArticleEngagementBar articleId={article.id} articleUrl={articleUrl} articleTitle={article.title} />
             <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
               {readingTimeMinutes} min read
             </p>
             <div
               className="article-content prose prose-lg dark:prose-invert max-w-none mb-8"
-              dangerouslySetInnerHTML={{ __html: article.content }}
+              dangerouslySetInnerHTML={{ __html: safeArticleContent }}
             />
 
             {/* In-Article Ad */}
@@ -351,6 +374,21 @@ export default async function ArticlePage({ params }) {
                     <Link key={at.tags.slug} href={`/tags/${at.tags.slug}`}>
                       <Badge variant="outline" className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
                         {at.tags.name}
+                      </Badge>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {keywordTopicLinks.length > 0 && (
+              <div className="mt-8">
+                <h3 className="text-sm font-semibold text-gray-500 dark:text-gray-400 mb-3 uppercase">Related Keywords</h3>
+                <div className="flex flex-wrap gap-2">
+                  {keywordTopicLinks.map((item) => (
+                    <Link key={item.slug} href={`/topic/${item.slug}`}>
+                      <Badge variant="outline" className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700">
+                        {item.keyword}
                       </Badge>
                     </Link>
                   ))}

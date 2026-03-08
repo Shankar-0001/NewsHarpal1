@@ -5,7 +5,7 @@ import StructuredData from '@/components/seo/StructuredData'
 import ArticleMiniCard from '@/components/content/ArticleMiniCard'
 import WebStoryCard from '@/components/content/WebStoryCard'
 import { extractTopicKeywords, matchesKeyword } from '@/lib/topic-utils'
-import { absoluteUrl, slugFromText } from '@/lib/site-config'
+import { absoluteUrl, buildLanguageAlternates, slugFromText } from '@/lib/site-config'
 import { notFound } from 'next/navigation'
 import Image from 'next/image'
 
@@ -44,7 +44,8 @@ export async function generateMetadata({ params }) {
   return {
     title: `${keyword} News, Updates and Explanation`,
     description: `Latest news, updates and analysis about ${keyword}`,
-    alternates: { canonical: url },
+    keywords: `${keyword}, trending ${keyword}, ${keyword} news, ${keyword} analysis`,
+    alternates: { canonical: url, languages: buildLanguageAlternates(`/trending/${params.keyword}`) },
     openGraph: {
       title: `${keyword} News, Updates and Explanation`,
       description: `Latest news, updates and analysis about ${keyword}`,
@@ -258,9 +259,9 @@ export default async function TrendingKeywordPage({ params }) {
           <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Related Topics</h2>
           <div className="flex flex-wrap gap-2">
             {relatedTopics.map((topic) => (
-              <a key={topic.slug} href={`/trending/${topic.slug}`} className="px-3 py-1.5 rounded-full border text-sm text-blue-700 dark:text-blue-300 hover:underline">
+              <Link key={topic.slug} href={`/trending/${topic.slug}`} className="px-3 py-1.5 rounded-full border text-sm text-blue-700 dark:text-blue-300 hover:underline">
                 {topic.keyword}
-              </a>
+              </Link>
             ))}
           </div>
         </section>
@@ -280,9 +281,9 @@ export default async function TrendingKeywordPage({ params }) {
           <h2 className="text-2xl font-semibold mb-4 text-gray-900 dark:text-white">Internal Links</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {finalLinks.slice(0, 20).map((item, idx) => (
-              <a key={`${item.href}-${idx}`} href={item.href} className="text-blue-600 dark:text-blue-400 hover:underline">
+              <Link key={`${item.href}-${idx}`} href={item.href} className="text-blue-600 dark:text-blue-400 hover:underline">
                 {item.label}
-              </a>
+              </Link>
             ))}
           </div>
         </section>

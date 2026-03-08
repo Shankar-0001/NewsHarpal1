@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { apiResponse } from '@/lib/api-utils'
 import { requireAuth, getUserAuthorId } from '@/lib/auth-utils'
 import { slugFromText } from '@/lib/site-config'
+import { validateWebStoryPayload } from '@/lib/web-story-validation'
 
 function normalizeSlides(slides) {
   if (!Array.isArray(slides)) return []
@@ -126,6 +127,21 @@ export async function PATCH(request, { params }) {
       if (!updates.seo_description) {
         updates.seo_description = slides.find((s) => s.seo_description)?.seo_description || null
       }
+    }
+
+    const { data: existingStory } = await supabase
+      .from('web_stories')
+      .select('title, cover_image, slides')
+      .eq('id', params.id)
+      .maybeSingle()
+
+    const validation = validateWebStoryPayload({
+      title: updates.title || existingStory?.title || '',
+      coverImage: updates.cover_image || existingStory?.cover_image || '',
+      slides: updates.slides || existingStory?.slides || [],
+    })
+    if (!validation.valid) {
+      return apiResponse(422, null, validation.issues[0])
     }
 
     const { data, error } = await supabase

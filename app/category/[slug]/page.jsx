@@ -5,7 +5,7 @@ import StructuredData from '@/components/seo/StructuredData'
 import ArticleMiniCard from '@/components/content/ArticleMiniCard'
 import Image from 'next/image'
 import Link from 'next/link'
-import { absoluteUrl } from '@/lib/site-config'
+import { absoluteUrl, buildLanguageAlternates } from '@/lib/site-config'
 import { InArticleAd } from '@/components/ads/AdComponent'
 
 export const revalidate = 600
@@ -20,7 +20,8 @@ export async function generateMetadata({ params }) {
   return {
     title: `${category.name} News Hub | NewsHarpal`,
     description: `Authority hub for ${category.name}: featured, trending, and latest stories.`,
-    alternates: { canonical: url },
+    keywords: `${category.name}, ${category.name} news, ${category.name} updates`,
+    alternates: { canonical: url, languages: buildLanguageAlternates(`/category/${category.slug}`) },
     openGraph: { title: `${category.name} News Hub`, description: `Top ${category.name} coverage.`, url, type: 'website' },
     twitter: { card: 'summary_large_image', title: `${category.name} News Hub`, description: `Top ${category.name} coverage.` },
   }

@@ -4,7 +4,7 @@ import PublicHeader from '@/components/layout/PublicHeader'
 import StructuredData from '@/components/seo/StructuredData'
 import ArticleMiniCard from '@/components/content/ArticleMiniCard'
 import { extractTopicKeywords, matchesKeyword } from '@/lib/topic-utils'
-import { absoluteUrl } from '@/lib/site-config'
+import { absoluteUrl, buildLanguageAlternates } from '@/lib/site-config'
 import { notFound } from 'next/navigation'
 import { stripHtml } from '@/lib/content-utils'
 import Link from 'next/link'
@@ -36,7 +36,8 @@ export async function generateMetadata({ params }) {
   return {
     title: `${keyword} Explained | NewsHarpal`,
     description: `Simple explainers and latest context for ${keyword}, with linked source articles.`,
-    alternates: { canonical: url },
+    keywords: `${keyword}, what is ${keyword}, ${keyword} explained, ${keyword} guide`,
+    alternates: { canonical: url, languages: buildLanguageAlternates(`/explained/${params.keyword}`) },
     openGraph: { title: `${keyword} Explained`, description: `Explainers for ${keyword}.`, url, type: 'article' },
     twitter: { card: 'summary_large_image', title: `${keyword} Explained`, description: `Explainers for ${keyword}.` },
   }

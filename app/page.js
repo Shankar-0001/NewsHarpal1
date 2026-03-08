@@ -145,7 +145,8 @@ export default async function HomePage() {
                     </div>
                   </div>
                   <Link
-                    href={`/${featuredArticle.categories?.slug}/${featuredArticle.slug}`}
+                    href={`/${featuredArticle.categories?.slug || 'news'}/${featuredArticle.slug}`}
+                    prefetch
                   >
                     <Button size="lg" variant="secondary">
                       Read Article
@@ -285,7 +286,7 @@ export default async function HomePage() {
                   <h3 className="text-xl font-bold mb-4 dark:text-white">Categories</h3>
                   <div className="flex flex-wrap gap-2">
                     {categories?.map(category => (
-                      <Link key={category.id} href={`/${category.slug}`}>
+                      <Link key={category.id} href={`/category/${category.slug}`}>
                         <Badge variant="outline" className="cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300">
                           {category.name}
                         </Badge>

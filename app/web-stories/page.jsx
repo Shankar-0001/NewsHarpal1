@@ -2,14 +2,17 @@ import { createClient } from '@/lib/supabase/server'
 import PublicHeader from '@/components/layout/PublicHeader'
 import WebStoryCard from '@/components/content/WebStoryCard'
 import StructuredData from '@/components/seo/StructuredData'
-import { absoluteUrl } from '@/lib/site-config'
+import { absoluteUrl, buildLanguageAlternates } from '@/lib/site-config'
 
 export const revalidate = 600
 
 export const metadata = {
   title: 'Top Web Stories | NewsHarpal',
   description: 'Visual and mobile-first Web Stories from NewsHarpal.',
-  alternates: { canonical: absoluteUrl('/web-stories') },
+  alternates: {
+    canonical: absoluteUrl('/web-stories'),
+    languages: buildLanguageAlternates('/web-stories'),
+  },
   openGraph: { title: 'Top Web Stories | NewsHarpal', description: 'Visual stories from NewsHarpal.', url: absoluteUrl('/web-stories') },
   twitter: { card: 'summary_large_image', title: 'Top Web Stories | NewsHarpal', description: 'Visual stories from NewsHarpal.' },
 }

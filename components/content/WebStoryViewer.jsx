@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ChevronLeft, ChevronRight, Heart } from 'lucide-react'
 import Image from 'next/image'
+import { getAnchorPropsForHref } from '@/lib/link-policy'
 
 const AUTO_MS = 5000
 
@@ -18,6 +19,9 @@ export default function WebStoryViewer({ story, articleUrl }) {
   const isCtaSlide = index === 10
   const isWhatsappSlide = index === 11
   const progressWidth = `${((index + 1) / Math.max(1, slides.length)) * 100}%`
+  const ctaHref = current?.cta_url || articleUrl || '#'
+  const ctaLinkProps = getAnchorPropsForHref(ctaHref)
+  const whatsappLinkProps = getAnchorPropsForHref(current?.whatsapp_group_url || '')
 
   useEffect(() => {
     if (!story?.id) return
@@ -101,9 +105,8 @@ export default function WebStoryViewer({ story, articleUrl }) {
           {(isCtaSlide || current?.cta_url) && (
             <div className="text-center mt-2">
               <a
-                href={current?.cta_url || articleUrl || '#'}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={ctaHref}
+                {...ctaLinkProps}
                 className="inline-flex text-base font-bold text-blue-300 hover:text-blue-200 underline underline-offset-4"
               >
                 {current.cta_text || 'Read More Stories'}
@@ -117,8 +120,7 @@ export default function WebStoryViewer({ story, articleUrl }) {
               {current.whatsapp_group_url ? (
                 <a
                   href={current.whatsapp_group_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
+                  {...whatsappLinkProps}
                   className="font-semibold text-green-300 hover:text-green-200 underline underline-offset-4"
                 >
                   Join our WhatsApp Group

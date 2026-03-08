@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { apiResponse } from '@/lib/api-utils'
 import { requireAuth, getUserAuthorId } from '@/lib/auth-utils'
 import { slugFromText } from '@/lib/site-config'
+import { validateWebStoryPayload } from '@/lib/web-story-validation'
 
 function normalizeSlides(slides) {
   if (!Array.isArray(slides)) return []
@@ -86,10 +87,20 @@ export async function POST(request) {
 
     const slug = payload.slug ? slugFromText(payload.slug) : slugFromText(title)
     const derivedSeoDescription = payload.seo_description || slides.find((s) => s.seo_description)?.seo_description || null
+    const coverImage = payload.cover_image || slides[0].image
+    const validation = validateWebStoryPayload({
+      title,
+      coverImage,
+      slides,
+    })
+    if (!validation.valid) {
+      return apiResponse(422, null, validation.issues[0])
+    }
+
     const insertData = {
       title,
       slug,
-      cover_image: payload.cover_image || slides[0].image,
+      cover_image: coverImage,
       slides,
       author_id: authorId,
       category_id: payload.category_id || null,

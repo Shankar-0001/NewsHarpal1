@@ -16,6 +16,7 @@ export default function robots() {
     ],
     sitemap: [
       `${siteUrl}/sitemap.xml`,
+      `${siteUrl}/article-sitemap.xml`,
       `${siteUrl}/news-sitemap.xml`,
       `${siteUrl}/category-sitemap.xml`,
       `${siteUrl}/topic-sitemap.xml`,

@@ -1,6 +1,7 @@
 import { apiResponse } from '@/lib/api-utils'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { fetchTrendingQueries } from '@/lib/trends-fetcher'
+import { processTrendAlerts } from '@/lib/trend-alerts'
 
 function isAuthorized(request) {
   const secret = process.env.CRON_SECRET
@@ -40,15 +41,34 @@ export async function GET(request) {
 
     if (error) return apiResponse(500, null, error.message)
 
+    let alertSummary = null
+    try {
+      const { data: alertTopics } = await admin
+        .from('trending_topics')
+        .select('keyword, slug, search_volume, created_at')
+        .in('slug', payload.map((item) => item.slug))
+        .limit(200)
+
+      alertSummary = await processTrendAlerts(admin, alertTopics || [])
+    } catch (alertError) {
+      alertSummary = {
+        error: alertError?.message || 'Trend alert processing failed',
+      }
+    }
+
     return apiResponse(200, {
       inserted: payload.length,
       updated: payload.length,
       total: payload.length,
       source: 'google-trends-rss',
+      geos: (process.env.TRENDS_GEO_LIST || 'US,IN,GB,CA,AU')
+        .split(',')
+        .map((item) => item.trim().toUpperCase())
+        .filter(Boolean),
+      alert_summary: alertSummary,
       fetched_at: now,
     }, null)
   } catch (error) {
     return apiResponse(500, null, error.message || 'Failed to fetch trends')
   }
 }
-

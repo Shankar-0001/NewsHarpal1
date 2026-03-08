@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { FileText, FolderOpen, Tag, Users, ArrowRight, Plus, TrendingUp } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
+import DashboardAnalyticsCharts from '@/components/dashboard/DashboardAnalyticsCharts'
+import { fetchGoogleTrendingNow } from '@/lib/trends-fetcher'
 
 export const revalidate = 0
 
@@ -50,6 +52,54 @@ export default async function DashboardPage() {
     .order('updated_at', { ascending: false })
     .limit(1)
     .maybeSingle()
+
+  const [{ data: articlesForAnalytics }, { data: engagementRows }] = await Promise.all([
+    supabase
+      .from('articles')
+      .select('id, title, slug, status, published_at')
+      .order('published_at', { ascending: false })
+      .limit(200),
+    supabase
+      .from('article_engagement')
+      .select('article_id, views, likes, shares')
+      .limit(5000),
+  ])
+  let trendRows = []
+  try {
+    trendRows = await fetchGoogleTrendingNow({ limit: 120 })
+  } catch {
+    const { data: fallbackTrends } = await supabase
+      .from('trending_topics')
+      .select('keyword, slug, search_volume, created_at, updated_at')
+      .order('search_volume', { ascending: false })
+      .limit(120)
+    trendRows = fallbackTrends || []
+  }
+
+  const engagementMap = new Map((engagementRows || []).map((row) => [
+    row.article_id,
+    {
+      views: row.views || 0,
+      likes: row.likes || 0,
+      shares: row.shares || 0,
+    },
+  ]))
+
+  const articleAnalytics = (articlesForAnalytics || []).map((article) => {
+    const metrics = engagementMap.get(article.id) || { views: 0, likes: 0, shares: 0 }
+    const score = (metrics.views || 0) + (metrics.likes || 0) * 3 + (metrics.shares || 0) * 5
+    return {
+      id: article.id,
+      title: article.title,
+      slug: article.slug,
+      status: article.status,
+      published_at: article.published_at,
+      views: metrics.views,
+      likes: metrics.likes,
+      shares: metrics.shares,
+      score,
+    }
+  })
 
   // Get recent articles
   const { data: recentArticles } = await supabase
@@ -138,6 +188,11 @@ export default async function DashboardPage() {
           </Link>
         ))}
       </div>
+
+      <DashboardAnalyticsCharts
+        articles={articleAnalytics}
+        trendingTopics={trendRows || []}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent Articles */}

@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import PublicHeader from '@/components/layout/PublicHeader'
 import StructuredData from '@/components/seo/StructuredData'
 import WebStoryViewer from '@/components/content/WebStoryViewer'
-import { absoluteUrl } from '@/lib/site-config'
+import { absoluteUrl, buildLanguageAlternates } from '@/lib/site-config'
 
 export const revalidate = 600
 
@@ -23,7 +23,10 @@ export async function generateMetadata({ params }) {
   return {
     title: `${story.title} | Web Story`,
     description,
-    alternates: { canonical: absoluteUrl(`/web-stories/${story.slug}`) },
+    alternates: {
+      canonical: absoluteUrl(`/web-stories/${story.slug}`),
+      languages: buildLanguageAlternates(`/web-stories/${story.slug}`),
+    },
     openGraph: {
       title: story.title,
       description,
